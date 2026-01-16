@@ -1,6 +1,6 @@
 # AimHarder Auto-Booking Bot
 
-This Python application runs in GitHub Actions to automatically book CrossFit classes on AimHarder (specifically for WeZone Arturo Soria).
+This Python application runs in GitHub Actions to automatically Book classes on aimharder app.
 
 ## Features
 
@@ -39,5 +39,5 @@ The workflow is configured in `.github/workflows/book_class.yml`. It runs daily 
 
 **Inputs/Variables:**
 
-- `BOX_NAME`: Default is `wezonearturosoria`.
-- `BOX_ID`: Default is `10584`.
+- `BOX_NAME`: [BOX_NAME]
+- `BOX_ID`: [BOX_ID]
