@@ -78,6 +78,7 @@ jobs:
           BOX_ID: ${{ github.event.inputs.box_id || '10002' }}
           TARGET_HOUR: ${{ github.event.inputs.target_hour || '18' }}
           TARGET_MINUTE: ${{ github.event.inputs.target_minute || '30' }}
+          DAYS_AHEAD: ${{ github.event.inputs.days_ahead || '2' }}
         run: |
           # Determine schedule file based on Box ID (e.g., schedule_10002.json)
           SCHEDULE_FILE="schedule_${BOX_ID}.json"
@@ -94,9 +95,6 @@ jobs:
           ARGS="--schedule $SCHEDULE_FILE"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
-          fi
-          if [ -n "${{ github.event.inputs.days_ahead }}" ]; then
-            ARGS="$ARGS --days-ahead ${{ github.event.inputs.days_ahead }}"
           fi
           if [ "${{ github.event.inputs.skip_wait }}" = "true" ]; then
             ARGS="$ARGS --skip-wait"

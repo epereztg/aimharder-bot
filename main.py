@@ -236,7 +236,7 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
 def main():
     parser = argparse.ArgumentParser(description="AimHarder Bot")
     parser.add_argument("--dry-run", action="store_true", help="Don't actually book, just show what would be booked")
-    parser.add_argument("--days-ahead", type=int, default=2, help="Book for N days ahead (default: 2)")
+    parser.add_argument("--days-ahead", type=int, default=int(os.environ.get("DAYS_AHEAD", 2)), help="Book for N days ahead (default: 2)")
     parser.add_argument("--schedule", type=str, default="schedule.json", help="Path to schedule JSON file")
     parser.add_argument("--skip-wait", action="store_true", help="Skip waiting for target time (for testing)")
     parser.add_argument("--box-name", type=str, default=None, help="Box name (subdomain), e.g. 'wezonearturosoria'")
