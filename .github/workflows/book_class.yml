@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs daily at 5:45 AM UTC - starts early to be ready when bookings open
     # The script will wait until 18:30 Madrid time (handles DST automatically)
-    - cron: '45 17 * * *'
+    - cron: '15 18 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -66,7 +66,7 @@ jobs:
           BOX_NAME: ${{ github.event.inputs.box_name || 'wezonearturosoria' }}
           BOX_ID: ${{ github.event.inputs.box_id || '10002' }}
           TARGET_HOUR: ${{ github.event.inputs.target_hour || '18' }}
-          TARGET_MINUTE: ${{ github.event.inputs.target_minute || '0' }}
+          TARGET_MINUTE: ${{ github.event.inputs.target_minute || '30' }}
         run: |
           # Determine schedule file based on Box ID (e.g., schedule_10002.json)
           SCHEDULE_FILE="schedule_${BOX_ID}.json"
