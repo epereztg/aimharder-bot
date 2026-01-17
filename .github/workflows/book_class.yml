@@ -15,7 +15,7 @@ on:
     #
     # If you calculated based on Winter (17:15 UTC), in Summer it would run at 19:15 Madrid (too late!).
     # So: Always configure cron for Summer UTC equivalent minus 15 mins.
-    - cron: '15 18 * * *'
+    - cron: '15 16 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
