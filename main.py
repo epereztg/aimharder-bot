@@ -241,8 +241,8 @@ def main():
     parser.add_argument("--skip-wait", action="store_true", help="Skip waiting for target time (for testing)")
     parser.add_argument("--box-name", type=str, default=None, help="Box name (subdomain), e.g. 'wezonearturosoria'")
     parser.add_argument("--box-id", type=int, default=None, help="Box ID, e.g. 10584")
-    parser.add_argument("--target-hour", type=int, default=int(os.environ.get("TARGET_HOUR", 7)), help="Target hour to run (0-23), default: 7")
-    parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 0)), help="Target minute to run (0-59), default: 0")
+    parser.add_argument("--target-hour", type=int, default=int(os.environ.get("TARGET_HOUR", 18)), help="Target hour to run (0-23), default: 18")
+    parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 30)), help="Target minute to run (0-59), default: 30")
     args = parser.parse_args()
     
     # Get box configuration from args, env vars, or defaults
@@ -251,7 +251,7 @@ def main():
     
     print(f"🏋️ Box: {box_name} (ID: {box_id})")
     
-    # Wait until target time (7:00 AM Madrid) before proceeding
+    # Wait until target time before proceeding
     wait_until_target_time(args.target_hour, args.target_minute, skip_wait=args.skip_wait)
     
     # Get credentials from environment
