@@ -79,10 +79,12 @@ def login(email: str, password: str, session: requests.Session, box_name: str, b
     Returns True if login is successful.
     """
     # AimHarder uses a centralized login portal
+    # AimHarder uses a centralized login portal
+    # Based on user feedback, fields are 'mail', 'pw', and 'login'
     login_payload = {
-        "email": email,
-        "password": password,
-        "box": box_id,
+        "login": "Log in",
+        "mail": email,
+        "pw": password,
     }
     
     headers = {
@@ -90,19 +92,31 @@ def login(email: str, password: str, session: requests.Session, box_name: str, b
         "Origin": "https://login.aimharder.com",
         "Referer": "https://login.aimharder.com/",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "X-Requested-With": "XMLHttpRequest", 
     }
     
     response = session.post(LOGIN_URL, data=login_payload, headers=headers, allow_redirects=True)
     
     # Check if we got redirected to the box page (successful login)
-    if response.ok and box_name in response.url:
-        print(f"✅ Login successful! Redirected to: {response.url}")
-        return True
-    
-    # Alternative: check for session cookies
-    if "PHPSESSID" in session.cookies.get_dict() or any("aim" in c.lower() for c in session.cookies.get_dict()):
-        print("✅ Login successful (session cookie obtained)")
-        return True
+    if response.ok:
+        # Check specific error messages in content
+        if "Too many wrong attempts" in response.text:
+            print("❌ Login failed: Too many wrong attempts")
+            return False
+        if "Incorrect credentials" in response.text or "Contraseña incorrecta" in response.text:
+            print("❌ Login failed: Incorrect credentials")
+            return False
+
+        if box_name in response.url:
+            print(f"✅ Login successful! Redirected to: {response.url}")
+            return True
+        
+        # Check cookies
+        if "PHPSESSID" in session.cookies.get_dict() or any("aim" in c.lower() for c in session.cookies.get_dict()):
+            print("✅ Login successful (session cookie obtained)")
+            # Print cookies for debug
+            print(f"   Cookies: {session.cookies.get_dict().keys()}")
+            return True
     
     print(f"❌ Login failed. Status: {response.status_code}")
     print(f"   Response URL: {response.url}")
@@ -220,7 +234,9 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     }
     
     response = session.post(bookings_api, data=booking_payload, headers=headers)
-    
+    print(f"Booking booking_payload: {booking_payload}")
+    print(f"Booking api response: {response.json()}")
+
     if response.ok:
         print(f"✅ Successfully booked: {class_name}")
         try:
