@@ -198,12 +198,14 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     
     date_str = target_date.strftime("%Y%m%d")
     base_url = f"https://{box_name}.aimharder.com"
-    bookings_api = f"{base_url}/api/bookings"
+    bookings_api = f"{base_url}/api/book"
     
+    # Payload based on user feedback (removed box_id from payload, added insist and familyId)
     booking_payload = {
         "id": class_id,
-        "box": box_id,
         "day": date_str,
+        "insist": 0,
+        "familyId": "", # Default to empty string if not used
     }
     
     if dry_run:
