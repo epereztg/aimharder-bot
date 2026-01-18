@@ -238,13 +238,20 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     print(f"Booking api response: {response.json()}")
 
     if response.ok:
-        print(f"✅ Successfully booked: {class_name}")
         try:
             result = response.json()
+            # User feedback: Check for {"logout": 1} which indicates failure
+            if isinstance(result, dict) and result.get("logout") == 1:
+                print(f"❌ Booking failed: Session expired (logout: 1)")
+                print(f"   Response: {result}")
+                return False
+                
+            print(f"✅ Successfully booked: {class_name}")
             print(f"   Response: {result}")
+            return True
         except json.JSONDecodeError:
-            pass
-        return True
+            print(f"✅ Successfully booked: {class_name} (No JSON response)")
+            return True
     else:
         print(f"❌ Booking failed: {response.status_code}")
         print(f"   Response: {response.text[:500]}")
