@@ -193,6 +193,14 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
         
         if time_match and name_match:
             print(f"✅ Found matching class: {class_name} at {class_time}")
+            
+            # Check if already booked
+            # Common fields: 'booked', 'isBooked', 'state'==1?
+            is_booked = cls.get("booked") or cls.get("isBooked") or cls.get("reservada")
+            if is_booked:
+                print(f"⚠️ Class '{class_name}' at {class_time} appears to be ALREADY BOOKED.")
+                cls["_is_already_booked"] = True # Mark for caller
+            
             return cls
     
     return None
@@ -235,7 +243,6 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     
     response = session.post(bookings_api, data=booking_payload, headers=headers)
     print(f"Booking booking_payload: {booking_payload}")
-    print(f"Booking api response: {response.json()}")
 
     if response.ok:
         try:
@@ -243,11 +250,9 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
             # User feedback: Check for {"logout": 1} which indicates failure
             if isinstance(result, dict) and result.get("logout") == 1:
                 print(f"❌ Booking failed: Session expired (logout: 1)")
-                print(f"   Response: {result}")
                 return False
                 
             print(f"✅ Successfully booked: {class_name}")
-            print(f"   Response: {result}")
             return True
         except json.JSONDecodeError:
             print(f"✅ Successfully booked: {class_name} (No JSON response)")
@@ -344,6 +349,11 @@ def main():
             print(f"   - {name} at {time}")
         sys.exit(1)
     
+    # Check if already booked
+    if matching_class.get("_is_already_booked"):
+        print(f"ℹ️ Skipping booking: Class {target_class} at {target_time} is already booked.")
+        sys.exit(0)
+
     # Book the class
     success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
     
