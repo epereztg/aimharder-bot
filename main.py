@@ -248,10 +248,28 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
         try:
             result = response.json()
             # User feedback: Check for {"logout": 1} which indicates failure
-            if isinstance(result, dict) and result.get("logout") == 1:
-                print(f"❌ Booking failed: Session expired (logout: 1)")
-                return False
+            if isinstance(result, dict):
+                # Check for logout
+                if result.get("logout") == 1:
+                    print(f"❌ Booking failed: Session expired (logout: 1)")
+                    return False
                 
+                # Check for specific AimHarder error states
+                book_state = result.get("bookState")
+                if book_state is not None:
+                    if book_state == -2:
+                        print(f"❌ Booking failed: No credit (bookState: -2)")
+                        return False
+                    if book_state == -12:
+                        print(f"❌ Booking failed: Too soon to book (bookState: -12)")
+                        return False
+                
+                # General checking: if errorMssg is present, it failed
+                if "errorMssg" in result or "errorMssgLang" in result:
+                    error_msg = result.get("errorMssg") or result.get("errorMssgLang")
+                    print(f"❌ Booking failed: {error_msg}")
+                    return False
+
             print(f"✅ Successfully booked: {class_name}")
             return True
         except json.JSONDecodeError:
