@@ -74,27 +74,28 @@ jobs:
         env:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          BOX_NAME: ${{ github.event.inputs.box_name }}
-          BOX_ID: ${{ github.event.inputs.box_id }}
-          TARGET_HOUR: ${{ github.event.inputs.target_hour || '18' }}
-          TARGET_MINUTE: ${{ github.event.inputs.target_minute || '30' }}
-          DAYS_AHEAD: ${{ github.event.inputs.days_ahead || '2' }}
         run: |
-          ARGS="--schedule schedule.json"
+          # 1. Prepare shared arguments from workflow inputs
+          OPTS=""
+          [ "${{ github.event.inputs.dry_run }}" = "true" ] && OPTS="$OPTS --dry-run"
+          [ "${{ github.event.inputs.skip_wait }}" = "true" ] && OPTS="$OPTS --skip-wait"
           
-          # Optional overrides from manual trigger
-          if [ -n "$BOX_NAME" ]; then
-            ARGS="$ARGS --box-name $BOX_NAME"
-          fi
-          if [ -n "$BOX_ID" ] && [ "$BOX_ID" != "0" ]; then
-            ARGS="$ARGS --box-id $BOX_ID"
+          # Use provided days_ahead or default to 2
+          DAYS="${{ github.event.inputs.days_ahead || '2' }}"
+          
+          # 2. Manual Override Logic: If Box ID/Name is provided, run ONLY that
+          # This allows you to test a specific box from the UI
+          if [ -n "${{ github.event.inputs.box_id }}" ] && [ "${{ github.event.inputs.box_id }}" != "0" ]; then
+             echo "🎯 Running manual override for Box ID: ${{ github.event.inputs.box_id }}"
+             python main.py $OPTS --days-ahead $DAYS --box-id ${{ github.event.inputs.box_id }} --box-name "${{ github.event.inputs.box_name }}"
+             exit 0
           fi
           
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            ARGS="$ARGS --dry-run"
-          fi
-          if [ "${{ github.event.inputs.skip_wait }}" = "true" ]; then
-            ARGS="$ARGS --skip-wait"
-          fi
+          # 3. Standard Schedule: Add a line for each box you want to book
+          # Copy/paste the lines below for more boxes. Ensure the JSON files exist.
           
-          python main.py $ARGS
+          echo "🚀 Processing Box 10002..."
+          python main.py $OPTS --days-ahead $DAYS --schedule schedule_10002.json
+          
+          # echo "🚀 Processing Box 10003..."
+          # python main.py $OPTS --days-ahead $DAYS --schedule schedule_10003.json

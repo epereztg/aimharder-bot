@@ -389,10 +389,13 @@ def main():
     
     # If schedule is a dict (old format), wrap it in a list with current box info
     if isinstance(schedule_data, dict):
-        print("⚠️ Legacy schedule format detected. Converting to new schema...")
+        print("⚠️ Single-box schedule format detected.")
+        box_id_val = schedule_data.get("id") or args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID
+        box_name_val = schedule_data.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
+        
         boxes_to_process = [{
-            "id": args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID,
-            "name": args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME,
+            "id": box_id_val,
+            "name": box_name_val,
             **schedule_data
         }]
     else:
