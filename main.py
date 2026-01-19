@@ -233,36 +233,87 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
     if not response.ok:
         print(f"⚠️ Failed to fetch dashboard: {response.status_code}")
         return None
+    import re
+    user_id_match = re.search(r"userID:\s*(\d+)", response.text)
+    if not user_id_match:
+        print("⚠️ Could not find userID in dashboard HTML.")
+        return None
     
-    soup = BeautifulSoup(response.text, "html.parser")
+    user_id = user_id_match.group(1)
+    # print(f"   Found userID: {user_id}")
     
+    # Fetch Activity Feed (AJAX)
+    # Based on dashboard JS: /api/activity?timeLineFormat=0&timeLineContent=7&userID=...
+    activity_url = f"https://{box_name}.aimharder.com/api/activity"
+    params = {
+        "timeLineFormat": 0,
+        "timeLineContent": 7,
+        "userID": user_id
+    }
+    
+    # print(f"🔄 Fetching Activity API...")
+    act_response = session.get(activity_url, params=params)
+    if not act_response.ok:
+        print(f"⚠️ Failed to fetch activity: {act_response.status_code}")
+        return None
+        
+    # The response is JSON
+    try:
+        data = act_response.json()
+    except Exception as e:
+        print(f"⚠️ Failed to parse Activity JSON: {e}")
+        return None
+
     # Target date string in Spanish (e.g. "19 Ene")
     target_date_str = get_spanish_date_str(target_date)
     print(f"   Looking for WOD for date: {target_date_str}")
     
-    # Logic: Find all timeline blocks
-    # Each block usually has a date header: <span class="cabeceraDay">19 Ene</span>
-    # And the WOD content in: <div class="subWodCon">...</div>
+    if "elements" not in data:
+        print("ℹ️ No 'elements' in activity feed.")
+        return None
+        
+    # We try to find the WOD that matches the day and preferably the class name
+    # If class_name is not provided (or we iterate to find best match), we print found ones
     
-    # We look for the date span first
-    # Note: There might be multiple blocks for the same day (different tracks).
-    # We will try to find *any* WOD content associated with this day.
+    # We need the class name from the caller to filter specifically
+    # For now, let's return the text of the *first* matching class for that day 
+    # OR matching the box name if generic? 
+    # Actually, the 'wodClass' field (e.g. "CrossFit", "Wezone Pulse") is what we want.
     
-    # Find all 'cabeceraActivityTL' which contain the date
-    timeline_blocks = soup.find_all("div", class_="bloqueNovedad")
+    # Let's try to match the class name we are booking
+    # We need to pass class_name to this function. 
+    # But since I can't easily change signature in a replace (it's called in main), 
+    # I'll iterate and find "CrossFit" or return a string with all WODs for that day?
     
-    for block in timeline_blocks:
-        date_span = block.find("span", class_="cabeceraDay")
-        if date_span and target_date_str in date_span.text:
-            # We found a block for this date. Check for WOD content.
-            wod_con = block.find("div", class_="subWodCon")
-            if wod_con:
-                # Extract text, handling <br> as newlines
-                text = wod_con.get_text(separator="\n").strip()
-                return text
-                
-    print(f"ℹ️ No WOD found for {target_date_str} on the dashboard.")
-    return None
+    # Better: return a dictionary or formatted string of ALL WODs for that day
+    # so the user sees what's available.
+    
+    wods_found = []
+    
+    for element in data.get("elements", []):
+        if element.get("day") == target_date_str:
+            wod_class = element.get("wodClass", "General")
+            
+            # Extract notes from TIPOWODs
+            notes_parts = []
+            tipos = element.get("TIPOWODs", [])
+            for tipo in tipos:
+                note_html = tipo.get("notes", "")
+                if note_html:
+                    # Clean HTML
+                    soup_note = BeautifulSoup(note_html, "html.parser")
+                    text = soup_note.get_text(separator="\n")
+                    notes_parts.append(text.strip())
+            
+            if notes_parts:
+                full_text = "\n\n".join(notes_parts)
+                wods_found.append(f"📌 {wod_class}:\n{full_text}")
+    
+    if not wods_found:
+        print(f"ℹ️ No WODs found for {target_date_str} in activity feed.")
+        return None
+        
+    return "\n\n".join(wods_found)
 
 
 def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
@@ -301,7 +352,6 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     }
     
     response = session.post(bookings_api, data=booking_payload, headers=headers)
-    print(f"Booking booking_payload: {booking_payload}")
 
     if response.ok:
         try:
@@ -412,7 +462,7 @@ def main():
         print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
         sys.exit(1)
     
-    print(f"📋 Found {len(classes)} classes for {day_name}")
+    # print(f"📋 Found {len(classes)} classes for {day_name}")
     
     # Find matching class
     matching_class = find_matching_class(classes, target_time, target_class)
@@ -428,17 +478,12 @@ def main():
 
     # Fetch and print WOD (best effort)
     # We do this before booking check so user sees it even if already booked
-    wod_text = fetch_wod(session, box_name, target_date)
-    if wod_text:
-        print("\n🏋️ WORKOUT OF THE DAY:")
-        print("---------------------------------------------------")
-        print(wod_text)
-        print("---------------------------------------------------\n")
-
-    # Debug: Print full class object to inspect values
-    # print(f"🔍 Full Class Object:")
-    # import pprint
-    # pprint.pprint(matching_class)
+    # wod_text = fetch_wod(session, box_name, target_date)
+    # if wod_text:
+    #     print("\n🏋️ WORKOUT OF THE DAY:")
+    #     print("---------------------------------------------------")
+    #     print(wod_text) do not always show the WOD by console
+    #     print("---------------------------------------------------\n")
     
     # Check if already booked
     if matching_class.get("_is_already_booked"):
