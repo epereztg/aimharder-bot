@@ -206,6 +206,65 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
     return None
 
 
+def get_spanish_date_str(date_obj: datetime) -> str:
+    """Format date as 'DD Mmm' (e.g. '19 Ene')."""
+    months = {
+        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
+    }
+    return f"{date_obj.day} {months[date_obj.month]}"
+
+
+def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -> Optional[str]:
+    """
+    Fetch the WOD for the target date from the main dashboard context.
+    The WOD is typically in a timeline feed.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        print("⚠️ BeautifulSoup not found. Cannot fetch WOD.")
+        return None
+
+    url = f"https://{box_name}.aimharder.com/"
+    print(f"🔄 Fetching WOD from {url}...")
+    
+    response = session.get(url)
+    if not response.ok:
+        print(f"⚠️ Failed to fetch dashboard: {response.status_code}")
+        return None
+    
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    # Target date string in Spanish (e.g. "19 Ene")
+    target_date_str = get_spanish_date_str(target_date)
+    print(f"   Looking for WOD for date: {target_date_str}")
+    
+    # Logic: Find all timeline blocks
+    # Each block usually has a date header: <span class="cabeceraDay">19 Ene</span>
+    # And the WOD content in: <div class="subWodCon">...</div>
+    
+    # We look for the date span first
+    # Note: There might be multiple blocks for the same day (different tracks).
+    # We will try to find *any* WOD content associated with this day.
+    
+    # Find all 'cabeceraActivityTL' which contain the date
+    timeline_blocks = soup.find_all("div", class_="bloqueNovedad")
+    
+    for block in timeline_blocks:
+        date_span = block.find("span", class_="cabeceraDay")
+        if date_span and target_date_str in date_span.text:
+            # We found a block for this date. Check for WOD content.
+            wod_con = block.find("div", class_="subWodCon")
+            if wod_con:
+                # Extract text, handling <br> as newlines
+                text = wod_con.get_text(separator="\n").strip()
+                return text
+                
+    print(f"ℹ️ No WOD found for {target_date_str} on the dashboard.")
+    return None
+
+
 def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
     """
     Book the specified class.
@@ -366,6 +425,20 @@ def main():
             time = cls.get("timeid", cls.get("time", "?"))
             print(f"   - {name} at {time}")
         sys.exit(1)
+
+    # Fetch and print WOD (best effort)
+    # We do this before booking check so user sees it even if already booked
+    wod_text = fetch_wod(session, box_name, target_date)
+    if wod_text:
+        print("\n🏋️ WORKOUT OF THE DAY:")
+        print("---------------------------------------------------")
+        print(wod_text)
+        print("---------------------------------------------------\n")
+
+    # Debug: Print full class object to inspect values
+    # print(f"🔍 Full Class Object:")
+    # import pprint
+    # pprint.pprint(matching_class)
     
     # Check if already booked
     if matching_class.get("_is_already_booked"):
