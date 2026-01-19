@@ -79,7 +79,6 @@ def login(email: str, password: str, session: requests.Session, box_name: str, b
     Returns True if login is successful.
     """
     # AimHarder uses a centralized login portal
-    # AimHarder uses a centralized login portal
     # Based on user feedback, fields are 'mail', 'pw', and 'login'
     login_payload = {
         "login": "Log in",
@@ -150,10 +149,6 @@ def get_classes_for_date(session: requests.Session, target_date: datetime, box_n
     
     try:
         data = response.json()
-        # The response structure may vary - common patterns:
-        # - { "bookings": [...] }
-        # - { "classes": [...] }
-        # - Direct array [...]
         if isinstance(data, list):
             return data
         elif isinstance(data, dict):
@@ -195,7 +190,6 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
             print(f"✅ Found matching class: {class_name} at {class_time}")
             
             # Check if already booked
-            # Common fields: 'booked', 'isBooked', 'state'==1?
             is_booked = cls.get("booked") or cls.get("isBooked") or cls.get("reservada")
             if is_booked:
                 print(f"⚠️ Class '{class_name}' at {class_time} appears to be ALREADY BOOKED.")
@@ -240,10 +234,8 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
         return None
     
     user_id = user_id_match.group(1)
-    # print(f"   Found userID: {user_id}")
     
     # Fetch Activity Feed (AJAX)
-    # Based on dashboard JS: /api/activity?timeLineFormat=0&timeLineContent=7&userID=...
     activity_url = f"https://{box_name}.aimharder.com/api/activity"
     params = {
         "timeLineFormat": 0,
@@ -251,20 +243,17 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
         "userID": user_id
     }
     
-    # print(f"🔄 Fetching Activity API...")
     act_response = session.get(activity_url, params=params)
     if not act_response.ok:
         print(f"⚠️ Failed to fetch activity: {act_response.status_code}")
         return None
         
-    # The response is JSON
     try:
         data = act_response.json()
     except Exception as e:
         print(f"⚠️ Failed to parse Activity JSON: {e}")
         return None
 
-    # Target date string in Spanish (e.g. "19 Ene")
     target_date_str = get_spanish_date_str(target_date)
     print(f"   Looking for WOD for date: {target_date_str}")
     
@@ -272,22 +261,6 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
         print("ℹ️ No 'elements' in activity feed.")
         return None
         
-    # We try to find the WOD that matches the day and preferably the class name
-    # If class_name is not provided (or we iterate to find best match), we print found ones
-    
-    # We need the class name from the caller to filter specifically
-    # For now, let's return the text of the *first* matching class for that day 
-    # OR matching the box name if generic? 
-    # Actually, the 'wodClass' field (e.g. "CrossFit", "Wezone Pulse") is what we want.
-    
-    # Let's try to match the class name we are booking
-    # We need to pass class_name to this function. 
-    # But since I can't easily change signature in a replace (it's called in main), 
-    # I'll iterate and find "CrossFit" or return a string with all WODs for that day?
-    
-    # Better: return a dictionary or formatted string of ALL WODs for that day
-    # so the user sees what's available.
-    
     wods_found = []
     
     for element in data.get("elements", []):
@@ -325,19 +298,17 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     
     if not class_id:
         print("❌ Could not determine class ID from class info")
-        print(f"   Class info keys: {class_info.keys()}")
         return False
     
     date_str = target_date.strftime("%Y%m%d")
     base_url = f"https://{box_name}.aimharder.com"
     bookings_api = f"{base_url}/api/book"
     
-    # Payload based on user feedback (removed box_id from payload, added insist and familyId)
     booking_payload = {
         "id": class_id,
         "day": date_str,
         "insist": 0,
-        "familyId": "", # Default to empty string if not used
+        "familyId": "",
     }
     
     if dry_run:
@@ -356,14 +327,11 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     if response.ok:
         try:
             result = response.json()
-            # User feedback: Check for {"logout": 1} which indicates failure
             if isinstance(result, dict):
-                # Check for logout
                 if result.get("logout") == 1:
                     print(f"❌ Booking failed: Session expired (logout: 1)")
                     return False
                 
-                # Check for specific AimHarder error states
                 book_state = result.get("bookState")
                 if book_state is not None:
                     if book_state == -2:
@@ -373,7 +341,6 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
                         print(f"❌ Booking failed: Too soon to book (bookState: -12)")
                         return False
                 
-                # General checking: if errorMssg is present, it failed
                 if "errorMssg" in result or "errorMssgLang" in result:
                     error_msg = result.get("errorMssg") or result.get("errorMssgLang")
                     print(f"❌ Booking failed: {error_msg}")
@@ -396,20 +363,11 @@ def main():
     parser.add_argument("--days-ahead", type=int, default=int(os.environ.get("DAYS_AHEAD", 2)), help="Book for N days ahead (default: 2)")
     parser.add_argument("--schedule", type=str, default="schedule.json", help="Path to schedule JSON file")
     parser.add_argument("--skip-wait", action="store_true", help="Skip waiting for target time (for testing)")
-    parser.add_argument("--box-name", type=str, default=None, help="Box name (subdomain), e.g. 'wezonearturosoria'")
-    parser.add_argument("--box-id", type=int, default=None, help="Box ID, e.g. 10584")
+    parser.add_argument("--box-name", type=str, default=None, help="Optional override for box name (subdomain)")
+    parser.add_argument("--box-id", type=int, default=None, help="Optional override for box ID")
     parser.add_argument("--target-hour", type=int, default=int(os.environ.get("TARGET_HOUR", 18)), help="Target hour to run (0-23), default: 18")
     parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 30)), help="Target minute to run (0-59), default: 30")
     args = parser.parse_args()
-    
-    # Get box configuration from args, env vars, or defaults
-    box_name = args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
-    box_id = args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID
-    
-    print(f"🏋️ Box: {box_name} (ID: {box_id})")
-    
-    # Wait until target time before proceeding
-    wait_until_target_time(args.target_hour, args.target_minute, skip_wait=args.skip_wait)
     
     # Get credentials from environment
     email = os.environ.get("EMAIL")
@@ -421,7 +379,7 @@ def main():
     
     # Load schedule
     try:
-        schedule = load_schedule(args.schedule)
+        schedule_data = load_schedule(args.schedule)
     except FileNotFoundError:
         print(f"❌ Schedule file not found: {args.schedule}")
         sys.exit(1)
@@ -429,6 +387,27 @@ def main():
         print(f"❌ Invalid JSON in schedule file: {e}")
         sys.exit(1)
     
+    # If schedule is a dict (old format), wrap it in a list with current box info
+    if isinstance(schedule_data, dict):
+        print("⚠️ Legacy schedule format detected. Converting to new schema...")
+        boxes_to_process = [{
+            "id": args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID,
+            "name": args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME,
+            **schedule_data
+        }]
+    else:
+        boxes_to_process = schedule_data
+
+    # Apply overrides/filters if provided
+    if args.box_id:
+        boxes_to_process = [b for b in boxes_to_process if str(b.get("id")) == str(args.box_id)]
+    elif args.box_name:
+        boxes_to_process = [b for b in boxes_to_process if b.get("name") == args.box_name]
+
+    if not boxes_to_process:
+        print("❌ No boxes to process. Check your schedule.json or filters.")
+        sys.exit(1)
+
     # Determine target date
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
@@ -437,63 +416,58 @@ def main():
     
     print(f"📅 Target date: {target_date.strftime('%Y-%m-%d')} ({day_name})")
     
-    # Check if there's a class scheduled for this day
-    day_schedule = schedule.get(day_name)
-    if not day_schedule:
-        print(f"ℹ️ No class scheduled for {day_name}. Exiting.")
-        sys.exit(0)
-    
-    target_time = day_schedule.get("time")
-    target_class = day_schedule.get("class_name")
-    
-    print(f"🎯 Looking for: {target_class} at {target_time}")
-    
-    # Create session and login
-    session = requests.Session()
-    
-    if not login(email, password, session, box_name, box_id):
-        print("❌ Authentication failed. Check your credentials.")
-        sys.exit(1)
-    
-    # Fetch classes for target date
-    classes = get_classes_for_date(session, target_date, box_name, box_id)
-    
-    if not classes:
-        print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
-        sys.exit(1)
-    
-    # print(f"📋 Found {len(classes)} classes for {day_name}")
-    
-    # Find matching class
-    matching_class = find_matching_class(classes, target_time, target_class)
-    
-    if not matching_class:
-        print(f"❌ No matching class found for {target_class} at {target_time}")
-        print("   Available classes:")
-        for cls in classes[:10]:  # Show first 10 classes
-            name = cls.get("className", cls.get("name", "?"))
-            time = cls.get("timeid", cls.get("time", "?"))
-            print(f"   - {name} at {time}")
-        sys.exit(1)
+    # Check if we should wait
+    any_scheduled = any(box.get(day_name) is not None for box in boxes_to_process)
+    if any_scheduled:
+        wait_until_target_time(args.target_hour, args.target_minute, skip_wait=args.skip_wait)
+    else:
+        print(f"ℹ️ No classes scheduled for any box on {day_name}.")
+        return
 
-    # Fetch and print WOD (best effort)
-    # We do this before booking check so user sees it even if already booked
-    # wod_text = fetch_wod(session, box_name, target_date)
-    # if wod_text:
-    #     print("\n🏋️ WORKOUT OF THE DAY:")
-    #     print("---------------------------------------------------")
-    #     print(wod_text) do not always show the WOD by console
-    #     print("---------------------------------------------------\n")
-    
-    # Check if already booked
-    if matching_class.get("_is_already_booked"):
-        print(f"ℹ️ Skipping booking: Class {target_class} at {target_time} is already booked.")
-        sys.exit(0)
+    # Process each box
+    for box in boxes_to_process:
+        box_name = box.get("name")
+        box_id = int(box.get("id", 0))
+        
+        print(f"\n🚀 Processing Box: {box_name} (ID: {box_id})")
+        
+        day_schedule = box.get(day_name)
+        if not day_schedule:
+            print(f"ℹ️ No class scheduled for {day_name} in this box.")
+            continue
+            
+        target_time = day_schedule.get("time")
+        target_class = day_schedule.get("class_name")
+        
+        print(f"🎯 Target: {target_class} at {target_time}")
+        
+        # Create session and login for this box
+        session = requests.Session()
+        if not login(email, password, session, box_name, box_id):
+            print(f"❌ Authentication failed for {box_name}.")
+            continue
+            
+        # Fetch classes
+        classes = get_classes_for_date(session, target_date, box_name, box_id)
+        if not classes:
+            print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
+            continue
+            
+        # Find matching class
+        matching_class = find_matching_class(classes, target_time, target_class)
+        if not matching_class:
+            print(f"❌ No matching class found for {target_class} at {target_time}")
+            continue
+            
+        # Check if already booked
+        if matching_class.get("_is_already_booked"):
+            print(f"ℹ️ Skipping booking: Already booked.")
+            continue
+            
+        # Book
+        book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
 
-    # Book the class
-    success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
-    
-    sys.exit(0 if success else 1)
+    print("\n🏁 Finished processing all boxes.")
 
 
 if __name__ == "__main__":

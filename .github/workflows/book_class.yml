@@ -74,29 +74,27 @@ jobs:
         env:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          BOX_NAME: ${{ github.event.inputs.box_name || 'wezonearturosoria' }}
-          BOX_ID: ${{ github.event.inputs.box_id || '10002' }}
+          BOX_NAME: ${{ github.event.inputs.box_name }}
+          BOX_ID: ${{ github.event.inputs.box_id }}
           TARGET_HOUR: ${{ github.event.inputs.target_hour || '18' }}
           TARGET_MINUTE: ${{ github.event.inputs.target_minute || '30' }}
           DAYS_AHEAD: ${{ github.event.inputs.days_ahead || '2' }}
         run: |
-          # Determine schedule file based on Box ID (e.g., schedule_10002.json)
-          SCHEDULE_FILE="schedule_${BOX_ID}.json"
+          ARGS="--schedule schedule.json"
           
-          if [ ! -f "$SCHEDULE_FILE" ]; then
-            echo "⚠️ Schedule file '$SCHEDULE_FILE' not found! Falling back to 'schedule.json' if exists, or error."
-            if [ -f "schedule.json" ]; then
-              SCHEDULE_FILE="schedule.json"
-            fi
+          # Optional overrides from manual trigger
+          if [ -n "$BOX_NAME" ]; then
+            ARGS="$ARGS --box-name $BOX_NAME"
+          fi
+          if [ -n "$BOX_ID" ] && [ "$BOX_ID" != "0" ]; then
+            ARGS="$ARGS --box-id $BOX_ID"
           fi
           
-          echo "📅 Using schedule: $SCHEDULE_FILE"
-          
-          ARGS="--schedule $SCHEDULE_FILE"
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
           if [ "${{ github.event.inputs.skip_wait }}" = "true" ]; then
             ARGS="$ARGS --skip-wait"
           fi
+          
           python main.py $ARGS
