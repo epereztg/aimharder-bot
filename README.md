@@ -19,7 +19,7 @@ This Python application runs in GitHub Actions to automatically book classes on 
 
 ## Configuration
 
-Each box (gym location) is configured with its own schedule file and GitHub Actions workflow.
+Each box is configured with its own schedule file and GitHub Actions workflow.
 
 ### 1. Schedule JSON (`schedule_XXXXX.json`)
 Create a JSON file for your box (e.g., `schedule_10002.json`) with the following format:
