@@ -3,7 +3,7 @@ name: AimHarder Bot LCL
 on:
   schedule:
     # Trigger appropriately for the target window
-    - cron: '50 16 * * *'
+    - cron: '50 10 * * *'
 
 jobs:
   book:
@@ -26,8 +26,8 @@ jobs:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
           # Configure the target booking time here (Madrid time)
-          TARGET_HOUR: 18
-          TARGET_MINUTE: 30
+          TARGET_HOUR: 12
+          TARGET_MINUTE: 00
         run: |
           echo "🚀 Processing Box 9907..."
           python main.py --days-ahead 2 --schedule schedule_9907.json
