@@ -7,11 +7,11 @@
     "Thursday": null,
     "Friday": {
         "time": "17:30",
-        "class_name": "CrossFit"
+        "class_name": "Crossfit"
     },
     "Saturday": {
         "time": "12:00",
-        "class_name": "Open Box."
+        "class_name": "Open Box"
     },
     "Sunday": null
 }

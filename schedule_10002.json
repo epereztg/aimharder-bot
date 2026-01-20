@@ -9,18 +9,12 @@
     "time": "18:30",
     "class_name": "CrossFit"
   },
-  "Wednesday": {
-    "time": "18:30",
-    "class_name": "CrossFit"
-  },
+  "Wednesday": null,
   "Thursday": null,
   "Friday": {
-    "time": "18:30",
+    "time": "17:30",
     "class_name": "Community WOD"
   },
-  "Saturday": {
-    "time": "10:00",
-    "class_name": "CrossFit."
-  },
+  "Saturday": null,
   "Sunday": null
 }
