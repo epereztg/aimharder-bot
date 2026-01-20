@@ -379,7 +379,7 @@ def main():
     
     # Load schedule
     try:
-        schedule_data = load_schedule(args.schedule)
+        box = load_schedule(args.schedule)
     except FileNotFoundError:
         print(f"❌ Schedule file not found: {args.schedule}")
         sys.exit(1)
@@ -387,29 +387,10 @@ def main():
         print(f"❌ Invalid JSON in schedule file: {e}")
         sys.exit(1)
     
-    # If schedule is a dict (old format), wrap it in a list with current box info
-    if isinstance(schedule_data, dict):
-        print("⚠️ Single-box schedule format detected.")
-        box_id_val = schedule_data.get("id") or args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID
-        box_name_val = schedule_data.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
-        
-        boxes_to_process = [{
-            "id": box_id_val,
-            "name": box_name_val,
-            **schedule_data
-        }]
-    else:
-        boxes_to_process = schedule_data
-
-    # Apply overrides/filters if provided
-    if args.box_id:
-        boxes_to_process = [b for b in boxes_to_process if str(b.get("id")) == str(args.box_id)]
-    elif args.box_name:
-        boxes_to_process = [b for b in boxes_to_process if b.get("name") == args.box_name]
-
-    if not boxes_to_process:
-        print("❌ No boxes to process. Check your schedule.json or filters.")
-        sys.exit(1)
+    # Use metadata from JSON if available, otherwise use overrides/defaults
+    box_id = box.get("id") or args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID
+    box_name = box.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
+    box_id = int(box_id)
 
     # Determine target date
     tz = pytz.timezone(TIMEZONE)
@@ -420,57 +401,48 @@ def main():
     print(f"📅 Target date: {target_date.strftime('%Y-%m-%d')} ({day_name})")
     
     # Check if we should wait
-    any_scheduled = any(box.get(day_name) is not None for box in boxes_to_process)
-    if any_scheduled:
+    day_schedule = box.get(day_name)
+    if day_schedule:
         wait_until_target_time(args.target_hour, args.target_minute, skip_wait=args.skip_wait)
     else:
-        print(f"ℹ️ No classes scheduled for any box on {day_name}.")
+        print(f"ℹ️ No classes scheduled for {day_name}.")
         return
 
-    # Process each box
-    for box in boxes_to_process:
-        box_name = box.get("name")
-        box_id = int(box.get("id", 0))
+    # Process booking
+    print(f"\n🚀 Processing Box: {box_name} (ID: {box_id})")
+    
+    target_time = day_schedule.get("time")
+    target_class = day_schedule.get("class_name")
+    
+    print(f"🎯 Target: {target_class} at {target_time}")
+    
+    # Create session and login
+    session = requests.Session()
+    if not login(email, password, session, box_name, box_id):
+        print(f"❌ Authentication failed for {box_name}.")
+        sys.exit(1)
         
-        print(f"\n🚀 Processing Box: {box_name} (ID: {box_id})")
+    # Fetch classes
+    classes = get_classes_for_date(session, target_date, box_name, box_id)
+    if not classes:
+        print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
+        sys.exit(1)
         
-        day_schedule = box.get(day_name)
-        if not day_schedule:
-            print(f"ℹ️ No class scheduled for {day_name} in this box.")
-            continue
-            
-        target_time = day_schedule.get("time")
-        target_class = day_schedule.get("class_name")
+    # Find matching class
+    matching_class = find_matching_class(classes, target_time, target_class)
+    if not matching_class:
+        print(f"❌ No matching class found for {target_class} at {target_time}")
+        sys.exit(1)
         
-        print(f"🎯 Target: {target_class} at {target_time}")
+    # Check if already booked
+    if matching_class.get("_is_already_booked"):
+        print(f"ℹ️ Skipping booking: Already booked.")
+        return
         
-        # Create session and login for this box
-        session = requests.Session()
-        if not login(email, password, session, box_name, box_id):
-            print(f"❌ Authentication failed for {box_name}.")
-            continue
-            
-        # Fetch classes
-        classes = get_classes_for_date(session, target_date, box_name, box_id)
-        if not classes:
-            print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
-            continue
-            
-        # Find matching class
-        matching_class = find_matching_class(classes, target_time, target_class)
-        if not matching_class:
-            print(f"❌ No matching class found for {target_class} at {target_time}")
-            continue
-            
-        # Check if already booked
-        if matching_class.get("_is_already_booked"):
-            print(f"ℹ️ Skipping booking: Already booked.")
-            continue
-            
-        # Book
-        book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
+    # Book
+    book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
 
-    print("\n🏁 Finished processing all boxes.")
+    print("\n🏁 Finished processing box.")
 
 
 if __name__ == "__main__":
