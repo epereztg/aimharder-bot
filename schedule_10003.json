@@ -1,29 +1,17 @@
 {
-    "id": "10003",
-    "name": "boxname2",
-    "Monday": {
-        "time": "18:30",
-        "class_name": "CrossFit"
-    },
-    "Tuesday": {
-        "time": "18:30",
-        "class_name": "CrossFit"
-    },
-    "Wednesday": {
-        "time": "18:30",
-        "class_name": "CrossFit"
-    },
-    "Thursday": {
-        "time": "18:30",
-        "class_name": "CrossFit"
-    },
+    "id": "9907",
+    "name": "laucalahealthcrossfit",
+    "Monday": null,
+    "Tuesday": null,
+    "Wednesday": null,
+    "Thursday": null,
     "Friday": {
-        "time": "18:30",
-        "class_name": "Community WOD"
+        "time": "17:30",
+        "class_name": "CrossFit"
     },
     "Saturday": {
-        "time": "10:00",
-        "class_name": "CrossFit."
+        "time": "12:00",
+        "class_name": "Open Box."
     },
     "Sunday": null
 }

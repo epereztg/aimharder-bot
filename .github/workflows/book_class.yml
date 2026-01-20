@@ -44,5 +44,5 @@ jobs:
           echo "🚀 Processing Box 10002..."
           python main.py --days-ahead 2 --schedule schedule_10002.json
           
-          # echo "🚀 Processing Box 10003..."
-          # python main.py --days-ahead 2 --schedule schedule_10003.json
+          # echo "🚀 Processing Box  9907..."
+          # python main.py --days-ahead 2 --schedule schedule_9907.json
