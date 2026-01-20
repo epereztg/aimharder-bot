@@ -28,6 +28,9 @@ jobs:
           # Configure the target booking time here (Madrid time)
           TARGET_HOUR: 12
           TARGET_MINUTE: 00
+          # Telegram Notifications
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Processing Box 9907..."
           python main.py --days-ahead 2 --schedule schedule_9907.json

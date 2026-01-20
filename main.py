@@ -289,6 +289,33 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
     return "\n\n".join(wods_found)
 
 
+def send_telegram_notification(message: str) -> bool:
+    """
+    Send a notification via Telegram Bot API.
+    Requires TELEGRAM_TOKEN and TELEGRAM_CHAT_ID environment variables.
+    """
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    if not token or not chat_id:
+        # Silently skip if not configured
+        return False
+        
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return response.ok
+    except Exception as e:
+        print(f"⚠️ Failed to send Telegram notification: {e}")
+        return False
+
+
 def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
     """
     Book the specified class.
@@ -314,6 +341,7 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     if dry_run:
         print(f"🔵 DRY RUN: Would book class '{class_name}' (ID: {class_id}) for {date_str}")
         print(f"   Payload: {booking_payload}")
+        send_telegram_notification(f"🔵 <b>DRY RUN</b>\nGym: {box_name}\nClass: {class_name}\nDate: {target_date.strftime('%Y-%m-%d')}")
         return True
     
     headers = {
@@ -327,33 +355,36 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     if response.ok:
         try:
             result = response.json()
+            error_msg = None
             if isinstance(result, dict):
                 if result.get("logout") == 1:
-                    print(f"❌ Booking failed: Session expired (logout: 1)")
-                    return False
+                    error_msg = "Session expired (logout: 1)"
                 
                 book_state = result.get("bookState")
                 if book_state is not None:
                     if book_state == -2:
-                        print(f"❌ Booking failed: No credit (bookState: -2)")
-                        return False
-                    if book_state == -12:
-                        print(f"❌ Booking failed: Too soon to book (bookState: -12)")
-                        return False
+                        error_msg = "No credit (bookState: -2)"
+                    elif book_state == -12:
+                        error_msg = "Too soon to book (bookState: -12)"
                 
-                if "errorMssg" in result or "errorMssgLang" in result:
+                if not error_msg and ("errorMssg" in result or "errorMssgLang" in result):
                     error_msg = result.get("errorMssg") or result.get("errorMssgLang")
-                    print(f"❌ Booking failed: {error_msg}")
-                    return False
+            
+            if error_msg:
+                print(f"❌ Booking failed: {error_msg}")
+                send_telegram_notification(f"❌ <b>Booking Failed</b>\nGym: {box_name}\nClass: {class_name}\nError: {error_msg}")
+                return False
 
             print(f"✅ Successfully booked: {class_name}")
+            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}\nDate: {target_date.strftime('%Y-%m-%d')}")
             return True
         except json.JSONDecodeError:
             print(f"✅ Successfully booked: {class_name} (No JSON response)")
+            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}")
             return True
     else:
         print(f"❌ Booking failed: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
+        send_telegram_notification(f"❌ <b>Booking Failed</b>\nGym: {box_name}\nError code: {response.status_code}")
         return False
 
 

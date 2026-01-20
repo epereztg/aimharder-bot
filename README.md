@@ -63,6 +63,16 @@ python main.py --schedule schedule_10002.json --dry-run --skip-wait --days-ahead
 ### GitHub Actions
 The bot runs automatically on the schedule defined in the `.yml` files.
 
-**Required Secrets:**
+**Required Secrets for Booking:**
 - `EMAIL`: Your AimHarder login email.
 - `PASSWORD`: Your AimHarder login password.
+
+**Optional Secrets for Notifications:**
+- `TELEGRAM_TOKEN`: Your Telegram Bot token (from [@BotFather](https://t.me/botfather)).
+- `TELEGRAM_CHAT_ID`: Your personal Telegram Chat ID (from [@userinfobot](https://t.me/userinfobot)).
+
+## Telegram Setup
+1.  Message [@BotFather](https://t.me/botfather) to create a new bot and get your **API Token**.
+2.  Message [@userinfobot](https://t.me/userinfobot) to find your **Chat ID**.
+3.  Add both to your GitHub Repository Secrets (`Settings > Secrets and variables > Actions`).
+4.  Once configured, the bot will send you a message every time it attempts a booking.
