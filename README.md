@@ -1,12 +1,13 @@
 # AimHarder Auto-Booking Bot
 
-This Python application runs in GitHub Actions to automatically Book classes on aimharder app.
+This Python application runs in GitHub Actions to automatically book classes on the AimHarder platform.
 
 ## Features
 
-- **Automated Booking**: Runs daily to book classes 2 days in advance.
-- **Schedule Based**: Uses a `schedule_10002.json` file to determine which class to book based on the day of the week.
-- **Configurable**: Supports customizable box names and IDs via environment variables or command-line arguments.
+-   **Automated Booking**: Runs daily to book classes several days in advance.
+-   **Schedule Based**: Uses per-box JSON schedule files (e.g., `schedule_10002.json`) to determine class times and names.
+-   **Configurable Timing**: Wait times and target booking windows are configurable per box directly in the GitHub Actions workflow.
+-   **WOD Fetching**: Automatically fetches and logs the Workout of the Day (WOD) for booked classes.
 
 ## Setup
 
@@ -16,28 +17,52 @@ This Python application runs in GitHub Actions to automatically Book classes on 
     pip install -r requirements.txt
     ```
 
+## Configuration
+
+Each box (gym location) is configured with its own schedule file and GitHub Actions workflow.
+
+### 1. Schedule JSON (`schedule_XXXXX.json`)
+Create a JSON file for your box (e.g., `schedule_10002.json`) with the following format:
+```json
+{
+  "id": "10002",
+  "name": "boxname",
+  "Monday": { "time": "18:30", "class_name": "CrossFit" },
+  "Friday": { "time": "17:30", "class_name": "Community WOD" },
+  ...
+}
+```
+
+### 2. GitHub Actions Workflow
+Each box has its own workflow file in `.github/workflows/`. You can configure the specific booking opening time for each box using the `TARGET_HOUR` and `TARGET_MINUTE` variables:
+
+```yaml
+env:
+  TARGET_HOUR: 18
+  TARGET_MINUTE: 30
+```
+
 ## Usage
 
 ### Local Execution
-
-You can run the script locally by setting the required environment variables:
+Set your credentials and runs the script targeting a specific schedule. By default, it will wait for the target time unless you use `--skip-wait`.
 
 ```bash
-export EMAIL="your_email@example.com"
+export EMAIL="your_email@gmail.com"
 export PASSWORD="your_password"
-python main.py
+python main.py --schedule schedule_10002.json
+```
+
+### Dry Run (Testing)
+To test your configuration without actually booking a class, use the `--dry-run` flag. Combine it with `--skip-wait` and `--days-ahead 0` (for today) or `1` (for tomorrow) to see the matching logic in action:
+
+```bash
+python main.py --schedule schedule_10002.json --dry-run --skip-wait --days-ahead 0
 ```
 
 ### GitHub Actions
-
-The workflow is configured in `.github/workflows/book_class.yml`. It runs daily at 5:45 AM UTC (targeting 7:00 AM Madrid time).
+The bot runs automatically on the schedule defined in the `.yml` files.
 
 **Required Secrets:**
-
-- `EMAIL`: Your AimHarder account email.
-- `PASSWORD`: Your AimHarder account password.
-
-**Inputs/Variables:**
-
-- `BOX_NAME`: [BOX_NAME]
-- `BOX_ID`: [BOX_ID]
+- `EMAIL`: Your AimHarder login email.
+- `PASSWORD`: Your AimHarder login password.
