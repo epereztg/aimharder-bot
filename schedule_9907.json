@@ -3,7 +3,10 @@
     "name": "laucalahealthcrossfit",
     "Monday": null,
     "Tuesday": null,
-    "Wednesday": null,
+    "Wednesday": {
+        "time": "20:30",
+        "class_name": "Crossfit"
+    },
     "Thursday": null,
     "Friday": {
         "time": "17:30",

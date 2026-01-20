@@ -296,7 +296,9 @@ def send_telegram_notification(message: str) -> bool:
     """
     token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    
+    print(f"⚠️  Sending Telegram...")
+    print(f"⚠️ Telegram chat_id: {chat_id}")
+    print(f"⚠️ Telegram token: {token}")
     if not token or not chat_id:
         # Silently skip if not configured
         return False
@@ -307,7 +309,9 @@ def send_telegram_notification(message: str) -> bool:
         "text": message,
         "parse_mode": "HTML"
     }
-    
+
+
+    print(f"⚠️ Telegram payload: {payload}")
     try:
         response = requests.post(url, json=payload, timeout=10)
         return response.ok
@@ -338,10 +342,18 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
         "familyId": "",
     }
     
+    display_time = class_info.get("time", class_info.get("startTime", "Unknown"))
+    if isinstance(display_time, str) and "_" in display_time:
+        display_time = display_time.split("_")[0]
+        if len(display_time) == 4 and display_time.isdigit():
+            display_time = f"{display_time[:2]}:{display_time[2:]}"
+    
+    day_name = target_date.strftime("%A")
+    
     if dry_run:
         print(f"🔵 DRY RUN: Would book class '{class_name}' (ID: {class_id}) for {date_str}")
         print(f"   Payload: {booking_payload}")
-        send_telegram_notification(f"🔵 <b>DRY RUN</b>\nGym: {box_name}\nClass: {class_name}\nDate: {target_date.strftime('%Y-%m-%d')}")
+        send_telegram_notification(f"🔵 <b>DRY RUN</b>\nGym: {box_name}\nClass: {class_name}\nTime: {display_time}\nDate: {day_name} {target_date.strftime('%Y-%m-%d')}")
         return True
     
     headers = {
@@ -365,22 +377,22 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
                     if book_state == -2:
                         error_msg = "No credit (bookState: -2)"
                     elif book_state == -12:
-                        error_msg = "Too soon to book (bookState: -12)"
+                        error_msg = "Too soon to book (bookState: -12) or already booked"
                 
                 if not error_msg and ("errorMssg" in result or "errorMssgLang" in result):
                     error_msg = result.get("errorMssg") or result.get("errorMssgLang")
             
             if error_msg:
                 print(f"❌ Booking failed: {error_msg}")
-                send_telegram_notification(f"❌ <b>Booking Failed</b>\nGym: {box_name}\nClass: {class_name}\nError: {error_msg}")
+                send_telegram_notification(f"❌ <b>Booking Failed</b>\nGym: {box_name}\nClass: {class_name}\nTime: {display_time}\nError: {error_msg}")
                 return False
 
             print(f"✅ Successfully booked: {class_name}")
-            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}\nDate: {target_date.strftime('%Y-%m-%d')}")
+            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}\nTime: {display_time}\nDate: {day_name} {target_date.strftime('%Y-%m-%d')}")
             return True
         except json.JSONDecodeError:
             print(f"✅ Successfully booked: {class_name} (No JSON response)")
-            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}")
+            send_telegram_notification(f"✅ <b>Booking Successful!</b>\nGym: {box_name}\nClass: {class_name}\nTime: {display_time}")
             return True
     else:
         print(f"❌ Booking failed: {response.status_code}")

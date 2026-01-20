@@ -33,4 +33,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Processing Box 9907..."
-          python main.py --days-ahead 2 --schedule schedule_9907.json
+          python main.py --days-ahead 0 --schedule schedule_9907.json
