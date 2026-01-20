@@ -2,8 +2,20 @@ name: AimHarder Bot
 
 on:
   schedule:
-    # Trigger at 9:40 AM UTC daily to target 10:00 AM Madrid booking window
-    - cron: '40 9 * * *'
+    # Runs daily at 5:45 AM UTC - starts early to be ready when bookings open
+    # The script will wait until 18:30 Madrid time (handles DST automatically)
+    # CRON CALCULATION / TIMEZONE EXPLANATION:
+    # GitHub Actions always runs in UTC. Madrid is UTC+1 in Winter and UTC+2 in Summer.
+    # To ensure the script ALWAYS runs before the target time (e.g. 15 mins before), 
+    # you must calculate the cron based on Summer time (UTC+2), which is the "earlier" UTC time.
+    # 
+    # Example for 18:30 Madrid Target:
+    # - Summer (UTC+2): 18:30 Madrid = 16:30 UTC. Trigger 15m before = 16:15 UTC.
+    # - Winter (UTC+1): 18:30 Madrid = 17:30 UTC. Trigger at 16:15 UTC will be 17:15 Madrid (1h 15m wait).
+    #
+    # If you calculated based on Winter (17:15 UTC), in Summer it would run at 19:15 Madrid (too late!).
+    # So: Always configure cron for Summer UTC equivalent minus 15 mins.
+    - cron: '15 16 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -22,31 +34,29 @@ on:
         default: false
         type: boolean
       box_name:
-        description: 'Manual override: Box name (subdomain)'
+        description: 'Box name (subdomain), e.g. wezonearturosoria'
         required: false
+        default: 'wezonearturosoria'
         type: string
       box_id:
-        description: 'Manual override: Box ID'
+        description: 'Box ID, e.g. 10002'
         required: false
-        default: '0'
+        default: '10002'
         type: string
       target_hour:
         description: 'Target hour to run (0-23)'
         required: false
-        default: '10'
+        default: '18'
         type: string
       target_minute:
         description: 'Target minute to run (0-59)'
         required: false
-        default: '00'
+        default: '30'
         type: string
 
 jobs:
   book:
     runs-on: ubuntu-latest
-    env:
-      # Ensure shell 'date' command uses Madrid time
-      TZ: Europe/Madrid
 
     steps:
       - name: Checkout repository
@@ -60,51 +70,21 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Sleep until specific time
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_wait != 'true')
-        run: |
-          target_hour=${{ github.event.inputs.target_hour || '10' }}
-          target_minute=${{ github.event.inputs.target_minute || '00' }}
-          target_second=1
-          
-          current_hour=$(date +%H)
-          current_minute=$(date +%M)
-          current_second=$(date +%S)
-
-          # Remove leading zeros to avoid octal issues
-          current_hour=$((10#$current_hour))
-          current_minute=$((10#$current_minute))
-          current_second=$((10#$current_second))
-          
-          target_time_in_seconds=$((target_hour * 3600 + target_minute * 60 + target_second))
-          current_time_in_seconds=$((current_hour * 3600 + current_minute * 60 + current_second))
-
-          echo "Current Madrid time: $(date +%H:%M:%S)"
-          echo "Target time: $target_hour:$target_minute:01"
-          
-          if [ $current_time_in_seconds -ge $target_time_in_seconds ]; then
-            sleep_duration=0
-            echo "Target time already passed."
-          else
-            sleep_duration=$((target_time_in_seconds - current_time_in_seconds))
-          fi
-
-          echo "Sleeping for $sleep_duration seconds until the target time"
-          sleep $sleep_duration
-
       - name: Run booking script
         env:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
         run: |
-          # Use --skip-wait because we handled the wait in the previous shell step
-          OPTS="--skip-wait"
+          # 1. Prepare shared arguments from workflow inputs
+          OPTS=""
           [ "${{ github.event.inputs.dry_run }}" = "true" ] && OPTS="$OPTS --dry-run"
+          [ "${{ github.event.inputs.skip_wait }}" = "true" ] && OPTS="$OPTS --skip-wait"
           
           # Use provided days_ahead or default to 2
           DAYS="${{ github.event.inputs.days_ahead || '2' }}"
           
           # 2. Manual Override Logic: If Box ID/Name is provided, run ONLY that
+          # This allows you to test a specific box from the UI
           if [ -n "${{ github.event.inputs.box_id }}" ] && [ "${{ github.event.inputs.box_id }}" != "0" ]; then
              echo "🎯 Running manual override for Box ID: ${{ github.event.inputs.box_id }}"
              python main.py $OPTS --days-ahead $DAYS --box-id ${{ github.event.inputs.box_id }} --box-name "${{ github.event.inputs.box_name }}"
@@ -112,8 +92,10 @@ jobs:
           fi
           
           # 3. Standard Schedule: Add a line for each box you want to book
+          # Copy/paste the lines below for more boxes. Ensure the JSON files exist.
+          
           echo "🚀 Processing Box 10002..."
           python main.py $OPTS --days-ahead $DAYS --schedule schedule_10002.json
           
-          echo "🚀 Processing Box 9907..."
-          python main.py $OPTS --days-ahead $DAYS --schedule schedule_10003.json
+          # echo "🚀 Processing Box 10003..."
+          # python main.py $OPTS --days-ahead $DAYS --schedule schedule_10003.json
