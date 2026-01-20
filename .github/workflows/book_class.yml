@@ -16,43 +16,6 @@ on:
     # If you calculated based on Winter (17:15 UTC), in Summer it would run at 19:15 Madrid (too late!).
     # So: Always configure cron for Summer UTC equivalent minus 15 mins.
     - cron: '15 16 * * *'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Dry run (do not actually book)'
-        required: false
-        default: false
-        type: boolean
-      days_ahead:
-        description: 'Days ahead to book (default: 2)'
-        required: false
-        default: '2'
-        type: string
-      skip_wait:
-        description: 'Skip waiting for target time (for testing)'
-        required: false
-        default: false
-        type: boolean
-      box_name:
-        description: 'Box name (subdomain), e.g. wezonearturosoria'
-        required: false
-        default: 'wezonearturosoria'
-        type: string
-      box_id:
-        description: 'Box ID, e.g. 10002'
-        required: false
-        default: '10002'
-        type: string
-      target_hour:
-        description: 'Target hour to run (0-23)'
-        required: false
-        default: '18'
-        type: string
-      target_minute:
-        description: 'Target minute to run (0-59)'
-        required: false
-        default: '30'
-        type: string
 
 jobs:
   book:
@@ -75,27 +38,11 @@ jobs:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
         run: |
-          # 1. Prepare shared arguments from workflow inputs
-          OPTS=""
-          [ "${{ github.event.inputs.dry_run }}" = "true" ] && OPTS="$OPTS --dry-run"
-          [ "${{ github.event.inputs.skip_wait }}" = "true" ] && OPTS="$OPTS --skip-wait"
-          
-          # Use provided days_ahead or default to 2
-          DAYS="${{ github.event.inputs.days_ahead || '2' }}"
-          
-          # 2. Manual Override Logic: If Box ID/Name is provided, run ONLY that
-          # This allows you to test a specific box from the UI
-          if [ -n "${{ github.event.inputs.box_id }}" ] && [ "${{ github.event.inputs.box_id }}" != "0" ]; then
-             echo "🎯 Running manual override for Box ID: ${{ github.event.inputs.box_id }}"
-             python main.py $OPTS --days-ahead $DAYS --box-id ${{ github.event.inputs.box_id }} --box-name "${{ github.event.inputs.box_name }}"
-             exit 0
-          fi
-          
-          # 3. Standard Schedule: Add a line for each box you want to book
-          # Copy/paste the lines below for more boxes. Ensure the JSON files exist.
+          # Standard Schedule: Add a line for each box you want to book
+          # The script will wait until 18:30 Madrid time (configured in main.py)
           
           echo "🚀 Processing Box 10002..."
-          python main.py $OPTS --days-ahead $DAYS --schedule schedule_10002.json
+          python main.py --days-ahead 2 --schedule schedule_10002.json
           
           # echo "🚀 Processing Box 10003..."
-          # python main.py $OPTS --days-ahead $DAYS --schedule schedule_10003.json
+          # python main.py --days-ahead 2 --schedule schedule_10003.json
