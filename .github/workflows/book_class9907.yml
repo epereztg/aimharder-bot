@@ -2,8 +2,8 @@ name: AimHarder Bot LCL
 
 on:
   schedule:
-    # Trigger appropriately for the target window
-    - cron: '45 11 * * *'
+    - cron: "45 10 * 1,2,11,12 *"   # Winter
+    - cron: "45 9 * 3-10 *"         # Summer
 
 jobs:
   book:
