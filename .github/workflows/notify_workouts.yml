@@ -1,0 +1,36 @@
+name: Workout Notifications
+
+on:
+  schedule:
+    - cron: "0 6 * 1,2,11,12 *"   # Winter (7:00 AM Madrid)
+    - cron: "0 5 * 3-10 *"        # Summer (7:00 AM Madrid)
+  workflow_dispatch:              # Manual trigger
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        box: [wezonearturosoria, laucalahealthcrossfit]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run notification script
+        env:
+          EMAIL: ${{ secrets.EMAIL }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "🚀 Sending notifications for ${{ matrix.box }}..."
+          python notify_workouts.py --box-name ${{ matrix.box }}

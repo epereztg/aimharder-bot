@@ -15,14 +15,11 @@ from typing import Optional
 import pytz
 import requests
 
-# --- Configuration ---
-LOGIN_URL = "https://login.aimharder.com/"
-TIMEZONE = "Europe/Madrid"
-
-
-# Default box configuration (can be overridden via CLI or env vars)
-DEFAULT_BOX_NAME = "wezonearturosoria"
-DEFAULT_BOX_ID = 10002
+# Import shared utilities
+from bot_utils import (
+    login, send_telegram_notification, get_spanish_date_str, fetch_wod,
+    TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
+)
 
 
 def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool = False) -> None:
@@ -73,53 +70,6 @@ def load_schedule(path: str = "schedule.json") -> dict:
         return json.load(f)
 
 
-def login(email: str, password: str, session: requests.Session, box_name: str, box_id: int) -> bool:
-    """
-    Authenticate with AimHarder.
-    Returns True if login is successful.
-    """
-    # AimHarder uses a centralized login portal
-    # Based on user feedback, fields are 'mail', 'pw', and 'login'
-    login_payload = {
-        "login": "Log in",
-        "mail": email,
-        "pw": password,
-    }
-    
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Origin": "https://login.aimharder.com",
-        "Referer": "https://login.aimharder.com/",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "X-Requested-With": "XMLHttpRequest", 
-    }
-    
-    response = session.post(LOGIN_URL, data=login_payload, headers=headers, allow_redirects=True)
-    
-    # Check if we got redirected to the box page (successful login)
-    if response.ok:
-        # Check specific error messages in content
-        if "Too many wrong attempts" in response.text:
-            print("❌ Login failed: Too many wrong attempts")
-            return False
-        if "Incorrect credentials" in response.text or "Contraseña incorrecta" in response.text:
-            print("❌ Login failed: Incorrect credentials")
-            return False
-
-        if box_name in response.url:
-            print(f"✅ Login successful! Redirected to: {response.url}")
-            return True
-        
-        # Check cookies
-        if "PHPSESSID" in session.cookies.get_dict() or any("aim" in c.lower() for c in session.cookies.get_dict()):
-            print("✅ Login successful (session cookie obtained)")
-            # Print cookies for debug
-            print(f"   Cookies: {session.cookies.get_dict().keys()}")
-            return True
-    
-    print(f"❌ Login failed. Status: {response.status_code}")
-    print(f"   Response URL: {response.url}")
-    return False
 
 
 def get_classes_for_date(session: requests.Session, target_date: datetime, box_name: str, box_id: int) -> list:
@@ -200,13 +150,6 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
     return None
 
 
-def get_spanish_date_str(date_obj: datetime) -> str:
-    """Format date as 'DD Mmm' (e.g. '19 Ene')."""
-    months = {
-        1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
-        7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic"
-    }
-    return f"{date_obj.day} {months[date_obj.month]}"
 
 
 def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -> Optional[str]:
@@ -284,37 +227,7 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
     
     if not wods_found:
         print(f"ℹ️ No WODs found for {target_date_str} in activity feed.")
-        return None
-        
     return "\n\n".join(wods_found)
-
-
-def send_telegram_notification(message: str) -> bool:
-    """
-    Send a notification via Telegram Bot API.
-    Requires TELEGRAM_TOKEN and TELEGRAM_CHAT_ID environment variables.
-    """
-    token = os.environ.get("TELEGRAM_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    print(f"⚠️  Sending Telegram...")
-    if not token or not chat_id:
-        # Silently skip if not configured
-        return False
-        
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-
-    try:
-        print(f"📡 Sending Telegram Notification:\n{message}")
-        response = requests.post(url, json=payload, timeout=10)
-        return response.ok
-    except Exception as e:
-        print(f"⚠️ Failed to send Telegram notification: {e}")
-        return False
 
 
 def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
@@ -370,66 +283,6 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
         "Referer": base_url,
     }
     
-    response = session.post(bookings_api, data=booking_payload, headers=headers)
-
-    if response.ok:
-        try:
-            result = response.json()
-            error_msg = None
-            if isinstance(result, dict):
-                if result.get("logout") == 1:
-                    error_msg = "Session expired (logout: 1)"
-                
-                book_state = result.get("bookState")
-                if book_state is not None:
-                    if book_state == -2:
-                        error_msg = "No credit (bookState: -2)"
-                    elif book_state == -12:
-                        error_msg = "Already booked"
-                
-                if not error_msg and ("errorMssg" in result or "errorMssgLang" in result):
-                    error_msg = result.get("errorMssg") or result.get("errorMssgLang")
-            
-            if error_msg:
-                print(f"❌ Booking failed: {error_msg}")
-                send_telegram_notification(
-                    f"❌ <b>Booking Failed</b>\n"
-                    f"<b>Box:</b> {box_name}\n"
-                    f"<b>Class:</b> {class_name}\n"
-                    f"<b>Time:</b> {display_time}\n"
-                    f"<b>Date:</b> {full_date_str}\n"
-                    f"<b>Error:</b> {error_msg}"
-                )
-                return False
-
-            print(f"✅ Successfully booked: {class_name}")
-            send_telegram_notification(
-                f"✅ <b>Booking Successful!</b>\n"
-                f"<b>Box:</b> {box_name}\n"
-                f"<b>Class:</b> {class_name}\n"
-                f"<b>Time:</b> {display_time}\n"
-                f"<b>Date:</b> {full_date_str}"
-            )
-            return True
-        except json.JSONDecodeError:
-            print(f"✅ Successfully booked: {class_name} (No JSON response)")
-            send_telegram_notification(
-                f"✅ <b>Booking Successful!</b>\n"
-                f"<b>Box:</b> {box_name}\n"
-                f"<b>Class:</b> {class_name}\n"
-                f"<b>Time:</b> {display_time}\n"
-                f"<b>Date:</b> {full_date_str}"
-            )
-            return True
-    else:
-        print(f"❌ Booking failed: {response.status_code}")
-        send_telegram_notification(
-            f"❌ <b>Booking Failed</b>\n"
-            f"<b>Box:</b> {box_name}\n"
-            f"<b>Error code:</b> {response.status_code}\n"
-            f"<b>Date:</b> {full_date_str}"
-        )
-        return False
 
 
 def main():
@@ -442,6 +295,7 @@ def main():
     parser.add_argument("--box-id", type=int, default=None, help="Optional override for box ID")
     parser.add_argument("--target-hour", type=int, default=int(os.environ.get("TARGET_HOUR", 18)), help="Target hour to run (0-23), default: 18")
     parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 30)), help="Target minute to run (0-59), default: 30")
+    parser.add_argument("--update-status", action="store_true", help="Just update the booking status JSON and exit")
     args = parser.parse_args()
     
     # Get credentials from environment
@@ -467,6 +321,15 @@ def main():
     box_name = box.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
     box_id = int(box_id)
 
+    # Create session and login
+    session = requests.Session()
+    if not login(email, password, session, box_name, box_id):
+        sys.exit(1)
+
+    if args.update_status:
+        update_booking_status(session, box, box_name, box_id)
+        return
+    
     # Determine target date
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
@@ -491,12 +354,6 @@ def main():
     
     print(f"🎯 Target: {target_class} at {target_time}")
     
-    # Create session and login
-    session = requests.Session()
-    if not login(email, password, session, box_name, box_id):
-        print(f"❌ Authentication failed for {box_name}.")
-        sys.exit(1)
-        
     # Fetch classes
     classes = get_classes_for_date(session, target_date, box_name, box_id)
     if not classes:
