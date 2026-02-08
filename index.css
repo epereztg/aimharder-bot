@@ -204,30 +204,6 @@ select:hover {
     padding-bottom: 0.2rem;
 }
 
-/* Calendar View */
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 1rem;
-}
-
-.calendar-day {
-    aspect-ratio: 1;
-    background: var(--card-bg);
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.day-label {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    font-weight: 700;
-}
 
 /* Animations */
 @keyframes fadeIn {
@@ -294,7 +270,4 @@ select:hover {
         margin-bottom: 2rem;
     }
 
-    .calendar-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
 }

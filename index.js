@@ -58,7 +58,6 @@ function setupEventListeners() {
 
     document.getElementById('view-table').addEventListener('click', () => switchView('table'));
     document.getElementById('view-list').addEventListener('click', () => switchView('list'));
-    document.getElementById('view-calendar').addEventListener('click', () => switchView('calendar'));
 }
 
 function switchView(view) {
@@ -76,10 +75,8 @@ function render() {
 
     if (currentView === 'table') {
         renderTable(container);
-    } else if (currentView === 'list') {
-        renderList(container);
     } else {
-        renderCalendar(container);
+        renderList(container);
     }
 }
 
@@ -145,32 +142,6 @@ function renderList(container) {
     container.appendChild(list);
 }
 
-function renderCalendar(container) {
-    const grid = document.createElement('div');
-    grid.className = 'calendar-grid';
-
-    daysOfWeek.forEach(day => {
-        const classData = currentData[day];
-        const dayCard = document.createElement('div');
-        dayCard.className = 'calendar-day';
-
-        dayCard.innerHTML = `<span class="day-label">${daysEs[day]}</span>`;
-
-        if (classData) {
-            dayCard.innerHTML += `
-                <div class="class-card">
-                    <span class="class-time">${classData.time}</span>
-                    <span class="class-name">${classData.class_name}</span>
-                </div>
-            `;
-        } else {
-            dayCard.innerHTML += '<div class="no-class">Sin clases</div>';
-        }
-        grid.appendChild(dayCard);
-    });
-
-    container.appendChild(grid);
-}
 
 document.addEventListener('DOMContentLoaded', init);
 
