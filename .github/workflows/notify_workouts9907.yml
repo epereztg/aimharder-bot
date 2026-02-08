@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        box: [wezonearturosoria, laucalahealthcrossfit]
+        box: [laucalahealthcrossfit]
 
     steps:
       - name: Checkout repository
