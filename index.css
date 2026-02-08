@@ -1,0 +1,300 @@
+:root {
+    --primary: #f06292;
+    --primary-hover: #ec407a;
+    --bg: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --border: rgba(255, 255, 255, 0.1);
+    --glass: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --accent: #38bdf8;
+    --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(240, 98, 146, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.05) 0%, transparent 40%);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    margin-bottom: 3rem;
+    text-align: center;
+    animation: fadeInDown 0.8s ease-out;
+}
+
+h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+p.subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    background: var(--glass);
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+.selector-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+select {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+select:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(240, 98, 146, 0.2);
+}
+
+.view-toggle {
+    display: flex;
+    background: var(--bg);
+    padding: 0.3rem;
+    border-radius: 0.8rem;
+    border: 1px solid var(--border);
+}
+
+.view-toggle button {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 0.6rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.view-toggle button.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(240, 98, 146, 0.3);
+}
+
+/* Scheduler Display Area */
+#schedule-content {
+    animation: fadeIn 0.8s ease-out 0.4s both;
+}
+
+/* Table View */
+.schedule-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0.5rem;
+    margin-top: 1rem;
+}
+
+.schedule-table th {
+    padding: 1rem;
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.schedule-table td {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.schedule-table td:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+}
+
+.class-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.class-time {
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: var(--accent);
+}
+
+.class-name {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.no-class {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+    opacity: 0.5;
+}
+
+/* List View */
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.day-section {
+    background: var(--glass);
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--glass-border);
+}
+
+.day-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--primary);
+    display: inline-block;
+    padding-bottom: 0.2rem;
+}
+
+/* Calendar View */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1rem;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.day-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 2.2rem;
+    }
+
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .schedule-table {
+        display: block;
+    }
+
+    .schedule-table thead {
+        display: none;
+    }
+
+    .schedule-table tr {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

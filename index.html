@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AimHarder Schedules | Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <meta name="description" content="Visualiza tus horarios de AimHarder de forma sencilla y rápida.">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>AimHarder Schedules</h1>
+            <p class="subtitle">Visualiza y gestiona tus horarios de entrenamiento</p>
+        </header>
+
+        <main>
+            <div class="controls">
+                <div class="selector-group">
+                    <label for="box-selector">Caja:</label>
+                    <select id="box-selector">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+
+                <div class="view-toggle">
+                    <button id="view-table" class="active">Tabla</button>
+                    <button id="view-list">Lista</button>
+                    <button id="view-calendar">Calendario</button>
+                </div>
+            </div>
+
+            <div id="schedule-content">
+                <!-- El contenido se cargará dinámicamente aquí -->
+                <div class="loading">Cargando datos del horario...</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
