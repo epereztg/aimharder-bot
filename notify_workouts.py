@@ -10,9 +10,9 @@ from bot_utils import (
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
 
-def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
+def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: int = 1) -> bool:
     """
-    Fetch all workouts from the activity feed and send a single Telegram message for the next 7 days.
+    Fetch all workouts from the activity feed and send a single Telegram message for the next X days.
     """
     try:
         from bs4 import BeautifulSoup
@@ -40,7 +40,7 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
     activity_url = f"https://{box_name}.aimharder.com/api/activity"
     params = {
         "timeLineFormat": 0,
-        "timeLineContent": 14, 
+        "timeLineContent": 100, # Increased limit to ensure we get a full week across all user boxes
         "userID": user_id
     }
     
@@ -67,17 +67,17 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
     
     # Store tuples of (match_label, display_label) to maintain order and nice names
     valid_date_info = []
-    for i in range(8):
+    # Start from 1 to exclude Today and include only from Tomorrow onwards
+    for i in range(1, days_ahead + 1):
         dt = now + timedelta(days=i)
         valid_date_info.append({
             "match": get_spanish_date_str(dt),
             "display": get_full_spanish_date_str(dt)
         })
     
-    match_to_display = {d["match"]: d["display"] for d in valid_date_info}
     valid_matches = [d["match"] for d in valid_date_info]
     
-    print(f"   Filtering WODs for the next 7 days: {', '.join(valid_matches)}")
+    print(f"   Filtering WODs for the next {days_ahead} days: {', '.join(valid_matches)}")
     
     for element in data.get("elements", []):
         day_str = element.get("day")
@@ -85,7 +85,8 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
             continue
             
         wod_class = element.get("wodClass", "General")
-        element_user = element.get("userName", "").lower()
+        import html
+        element_user = html.unescape(element.get("userName", ""))
         
         # Filter: Only show Crossfit workouts
         if "crossfit" not in wod_class.lower():
@@ -128,8 +129,16 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
             val1 = val1_list[0] if val1_list and isinstance(val1_list, list) else ""
             # valor2 is usually load/weight
             val2 = ejer.get("valor2", "")
+            # notes field (e.g., 'Primera ronda', 'Incremento por ronda')
+            notes = ejer.get("notes", "")
             
-            ejer_str = f"{val1} {name}".strip()
+            # Add 'm' for Run/Row if missing
+            unit = ""
+            if val1 and any(x in name.lower() for x in ["run", "row"]) and "m" not in name.lower() and "m" not in str(val1).lower():
+                unit = "m"
+            
+            prefix = f"<b>{notes}</b> " if notes else ""
+            ejer_str = f"{prefix}{val1}{unit} {name}".strip()
             if val2:
                 ejer_str += f" ({val2})"
             
@@ -148,9 +157,14 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
                 tipo_parts.append(f"<u>{title}</u>")
             
             # 2. Section Notes
-            for key in ["notes", "notes2", "notesBreak"]:
+            # We exclude 'notesBreak' to avoid unwanted "Descanso / Rest" labels not in original publication
+            for key in ["notes", "notes2"]:
                 val = tipo.get(key, "")
                 if val:
+                    # Skip if it's just repeating the class name
+                    if val.strip().upper() == wod_class.upper():
+                        continue
+                        
                     soup = BeautifulSoup(val, "html.parser")
                     text = soup.get_text(separator="\n")
                     clean = "\n".join([line.strip() for line in text.splitlines() if line.strip()])
@@ -195,8 +209,9 @@ def notify_all_workouts(session: requests.Session, box_name: str) -> bool:
             wods_by_day[day_str].append(f"{prefix} <b>{wod_class.upper()}</b>\n{full_text}")
     
     if not wods_by_day:
-        print("ℹ️ No workouts found in activity feed.")
-        send_telegram_notification(f"ℹ️ No hay entrenamientos publicados en <b>{box_name}</b> actualmente.")
+        msg = f"ℹ️ No workouts found for {box_name} in the next {days_ahead} days."
+        print(msg)
+        send_telegram_notification(f"ℹ️ No hay entrenamientos publicados en <b>{box_name}</b> para los próximos {days_ahead} días.")
         return True
         
     # Group message into "Day Blocks" and track "Run Days"
@@ -263,6 +278,7 @@ def main():
     parser = argparse.ArgumentParser(description="AimHarder Workout Notifier")
     parser.add_argument("--box-name", type=str, default=DEFAULT_BOX_NAME, help="Box name (subdomain)")
     parser.add_argument("--box-id", type=int, default=DEFAULT_BOX_ID, help="Box ID")
+    parser.add_argument("--days-ahead", type=int, default=7, help="Number of days to check ahead (default: 7)")
     args = parser.parse_args()
     
     email = os.environ.get("EMAIL")
@@ -276,7 +292,7 @@ def main():
     if not login(email, password, session, args.box_name, args.box_id):
         sys.exit(1)
         
-    notify_all_workouts(session, args.box_name)
+    notify_all_workouts(session, args.box_name, args.days_ahead)
 
 if __name__ == "__main__":
     import os

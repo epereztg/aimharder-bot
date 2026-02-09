@@ -33,4 +33,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Sending notifications for ${{ matrix.box }}..."
-          python notify_workouts.py --box-name ${{ matrix.box }}
+          python notify_workouts.py --box-name ${{ matrix.box }} --days-ahead 1
