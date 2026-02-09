@@ -2,8 +2,8 @@ name: Workout Notifications LCL
 
 on:
   schedule:
-    - cron: "0 6 * 1,2,11,12 *"   # Winter (7:00 AM Madrid)
-    - cron: "0 5 * 3-10 *"        # Summer (7:00 AM Madrid)
+    - cron: "0 21 * 1,2,11,12 *"   # Winter (22:00 Madrid) - Daily
+    - cron: "0 20 * 3-10 *"        # Summer (22:00 Madrid) - Daily
   workflow_dispatch:              # Manual trigger
 
 jobs:
