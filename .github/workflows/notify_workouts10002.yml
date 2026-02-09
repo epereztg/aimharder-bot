@@ -2,8 +2,8 @@ name: Workout Notifications WZ
 
 on:
   schedule:
-    - cron: "0 6 * 1,2,11,12 *"   # Winter (7:00 AM Madrid)
-    - cron: "0 5 * 3-10 *"        # Summer (7:00 AM Madrid)
+    - cron: "0 11 * 1,2,11,12 0"   # Winter (12:00 PM Madrid) - Sundays only
+    - cron: "0 10 * 3-10 0"        # Summer (12:00 PM Madrid) - Sundays only
   workflow_dispatch:              # Manual trigger
 
 jobs:
