@@ -9,9 +9,6 @@ on:
 jobs:
   notify:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        box: [wezonearturosoria]
 
     steps:
       - name: Checkout repository
@@ -32,5 +29,5 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "🚀 Sending notifications for ${{ matrix.box }}..."
-          python notify_workouts.py --box-name ${{ matrix.box }} --days-ahead 3
+          echo "🚀 Sending notifications for wezonearturosoria..."
+          python notify_workouts.py --box-name wezonearturosoria --days-ahead 7
