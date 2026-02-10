@@ -3,7 +3,8 @@ name: AimHarder Bot WZ
 on:
   schedule:
     - cron: "15 16 * 1,2,11,12 *"   # Winter
-    - cron: "45 15 * 3-10 *"        # Summer
+    - cron: "15 15 * 3-10 *"        # Summer
+  workflow_dispatch:              # Manual trigger
 
 jobs:
   book:

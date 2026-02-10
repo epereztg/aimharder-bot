@@ -2,8 +2,9 @@ name: AimHarder Bot LCL
 
 on:
   schedule:
-    - cron: "45 10 * 1,2,11,12 *"   # Winter
-    - cron: "45 9 * 3-10 *"         # Summer
+    - cron: "25 10 * 1,2,11,12 *"   # Winter
+    - cron: "25 9 * 3-10 *"         # Summer
+  workflow_dispatch:              # Manual trigger
 
 jobs:
   book:
