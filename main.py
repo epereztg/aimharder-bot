@@ -340,6 +340,9 @@ def main():
     
     # Check if we should wait
     day_schedule = box.get(day_name)
+    print(f"📅 day_schedule:" ,day_schedule)
+
+
     if day_schedule:
         wait_until_target_time(args.target_hour, args.target_minute, skip_wait=args.skip_wait)
     else:

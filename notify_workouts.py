@@ -70,6 +70,7 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
     }
     
     act_response = session.get(activity_url, params=params)
+    print(f"🔄 act_response: {act_response}")
     if not act_response.ok:
         print(f"⚠️ Failed to fetch activity: {act_response.status_code}")
         return False
@@ -92,7 +93,7 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
     
     # Build list of valid dates (starting from tomorrow)
     valid_date_info = []
-    print(f"   data: {data}")
+    # print(f"   data: {data}")
     for i in range(1, days_ahead + 1):
         dt = now + timedelta(days=i)
         valid_date_info.append({
@@ -304,8 +305,8 @@ def main():
                        help="Box name (subdomain)")
     parser.add_argument("--box-id", type=int, default=DEFAULT_BOX_ID, 
                        help="Box ID")
-    parser.add_argument("--days-ahead", type=int, default=7, 
-                       help="Number of days to check ahead (default: 7)")
+    parser.add_argument("--days-ahead", type=int, default=1, 
+                       help="Number of days to check ahead (default: 1s)")
     args = parser.parse_args()
     
     # Get credentials from environment
