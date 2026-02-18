@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.md
+index.css
+index.html
+index.js
+output.txt
+config.json

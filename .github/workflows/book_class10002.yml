@@ -6,33 +6,36 @@ on:
     - cron: "15 15 * 3-10 *"        # Summer
   workflow_dispatch:              # Manual trigger
 
+env:
+  IMAGE: ghcr.io/epereztg/aimharder-bot:latest
+
 jobs:
   book:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run booking script
         env:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          # Configure the target booking time here (Madrid time)
           TARGET_HOUR: 18
           TARGET_MINUTE: 30
-          # Telegram Notifications
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Processing Box 10002..."
-          python main.py --days-ahead 2 --schedule schedule_10002.json
-
+          docker run --rm \
+            -e EMAIL -e PASSWORD \
+            -e TARGET_HOUR -e TARGET_MINUTE \
+            -e TELEGRAM_TOKEN -e TELEGRAM_CHAT_ID \
+            ${{ env.IMAGE }} \
+            python main.py --days-ahead 2 --schedule schedule_10002.json

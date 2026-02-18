@@ -6,21 +6,22 @@ on:
     - cron: "0 10 * 3-10 0"        # Summer (12:00 PM Madrid) - Sundays only
   workflow_dispatch:              # Manual trigger
 
+env:
+  IMAGE: ghcr.io/epereztg/aimharder-bot:latest
+
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run notification script
         env:
@@ -30,4 +31,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Sending notifications for wezonearturosoria..."
-          python notify_workouts.py --box-name wezonearturosoria --days-ahead 7
+          docker run --rm \
+            -e EMAIL -e PASSWORD \
+            -e TELEGRAM_TOKEN -e TELEGRAM_CHAT_ID \
+            ${{ env.IMAGE }} \
+            python notify_workouts.py --box-name wezonearturosoria --days-ahead 7
