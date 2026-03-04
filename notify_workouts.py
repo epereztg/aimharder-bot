@@ -119,23 +119,17 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
         if not day_str or day_str not in valid_matches:
             continue
         
-        # --- Filter by class type (CrossFit only) ---
+        # --- Filter by box ---
+        element_box = element.get("box")
+        if not element_box or normalize(box_name) not in normalize(html.unescape(element_box)):
+            continue
+        
+        # --- Filter by class type (Crossfit only) ---
         wod_class = element.get("wodClass", "General")
-        print(f"   wod_class: {wod_class}")
-        # if "crossfit" not in wod_class.lower():
-        #     continue
+        if wod_class.lower() != "crossfit":
+            continue
         
-        # --- Filter by box name ---
-        element_user = html.unescape(element.get("userName", ""))
-        element_norm = normalize(element_user)
-        
-        # Check if this workout belongs to the requested box
-        if target_norm not in element_norm and element_norm not in target_norm:
-            # Special case: allow partial match for Wezone boxes
-            if "wezone" in target_norm and "wezone" in element_norm:
-                pass  # Accept it
-            else:
-                continue  # Skip this element
+        # print("MATCHED RAW ELEMENT:", json.dumps(element, indent=2))
         
         # --- Extract workout content ---
         full_text_parts = []
@@ -152,6 +146,9 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
             
             # Extract exercise details
             name = ejer.get("ejerName", "")
+            if name.lower() in ["descanso", "rest", "descanso rest"]:
+                continue
+            
             val1_list = ejer.get("valor1", [])
             val1 = val1_list[0] if val1_list and isinstance(val1_list, list) else ""
             val2 = ejer.get("valor2", "")  # Weight/load

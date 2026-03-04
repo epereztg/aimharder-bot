@@ -16,12 +16,17 @@ jobs:
       packages: read
 
     steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run notification script
         env:
@@ -31,8 +36,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Sending notifications for laucalahealthcrossfit..."
-          docker run --rm \
-            -e EMAIL -e PASSWORD \
-            -e TELEGRAM_TOKEN -e TELEGRAM_CHAT_ID \
-            ${{ env.IMAGE }} \
-            python notify_workouts.py --box-name laucalahealthcrossfit --days-ahead 1
+          python notify_workouts.py --box-name laucalahealthcrossfit --days-ahead 1

@@ -16,12 +16,17 @@ jobs:
       packages: read
 
     steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run booking script
         env:
@@ -33,9 +38,4 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           echo "🚀 Processing Box 10002..."
-          docker run --rm \
-            -e EMAIL -e PASSWORD \
-            -e TARGET_HOUR -e TARGET_MINUTE \
-            -e TELEGRAM_TOKEN -e TELEGRAM_CHAT_ID \
-            ${{ env.IMAGE }} \
-            python main.py --days-ahead 2 --schedule schedule_10002.json
+          python main.py --days-ahead 2 --schedule schedule_10002.json
