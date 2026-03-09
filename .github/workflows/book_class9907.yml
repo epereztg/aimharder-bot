@@ -2,8 +2,11 @@ name: AimHarder Bot LCL
 
 on:
   schedule:
-    - cron: "25 10 * 1,2,11,12 *"   # Winter
-    - cron: "25 9 * 3-10 *"         # Summer
+    # GitHub Actions cron times are ALWAYS UTC.
+    # Madrid is UTC+1 in winter (CET) and UTC+2 in summer (CEST).
+    # These entries ensure the workflow starts just before the booking window:
+    - cron: "25 10 * 1,2,11,12 *"   # Winter (Nov-Feb): 10:25 UTC = 11:25 CET  (UTC+1)
+    - cron: "25 9 * 3-10 *"         # Summer (Mar-Oct): 09:25 UTC = 11:25 CEST (UTC+2)
   workflow_dispatch:              # Manual trigger
 
 env:
@@ -32,8 +35,10 @@ jobs:
         env:
           EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
-          TARGET_HOUR: 12
-          TARGET_MINUTE: 00
+          # TARGET_HOUR_GMT1: booking open time in Madrid local time (NOT UTC).
+          # The Python script (wait_until_target_time) converts this to UTC internally using pytz.
+          TARGET_HOUR_GMT1: 12
+          TARGET_MINUTE: 00  # minutes, also in Madrid local time
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |

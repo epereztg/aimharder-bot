@@ -282,7 +282,53 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
         "Accept": "application/json",
         "Referer": base_url,
     }
-    
+
+    response = session.post(bookings_api, data=booking_payload, headers=headers)
+
+    if not response.ok:
+        print(f"❌ Booking request failed: {response.status_code}")
+        print(f"   Response: {response.text[:500]}")
+        send_telegram_notification(
+            f"❌ <b>Booking FAILED</b>\n"
+            f"<b>Box:</b> {box_name}\n"
+            f"<b>Class:</b> {class_name}\n"
+            f"<b>Time:</b> {display_time}\n"
+            f"<b>Date:</b> {full_date_str}\n"
+            f"<b>Error:</b> HTTP {response.status_code}"
+        )
+        return False
+
+    try:
+        resp_json = response.json()
+    except Exception:
+        resp_json = {}
+
+    # AimHarder returns bookState: 1 for success, and may include error messages
+    book_state = resp_json.get("bookState")
+    error_msg = resp_json.get("bookError", resp_json.get("error", ""))
+
+    if book_state == 1 or response.ok and not error_msg:
+        print(f"✅ Successfully booked '{class_name}' at {display_time} on {full_date_str}")
+        send_telegram_notification(
+            f"✅ <b>Booking CONFIRMED</b>\n"
+            f"<b>Box:</b> {box_name}\n"
+            f"<b>Class:</b> {class_name}\n"
+            f"<b>Time:</b> {display_time}\n"
+            f"<b>Date:</b> {full_date_str}"
+        )
+        return True
+    else:
+        print(f"❌ Booking failed. bookState={book_state}, error={error_msg}")
+        send_telegram_notification(
+            f"❌ <b>Booking FAILED</b>\n"
+            f"<b>Box:</b> {box_name}\n"
+            f"<b>Class:</b> {class_name}\n"
+            f"<b>Time:</b> {display_time}\n"
+            f"<b>Date:</b> {full_date_str}\n"
+            f"<b>Reason:</b> {error_msg or 'Unknown'}"
+        )
+        return False
+
 
 
 def main():
@@ -293,7 +339,10 @@ def main():
     parser.add_argument("--skip-wait", action="store_true", help="Skip waiting for target time (for testing)")
     parser.add_argument("--box-name", type=str, default=None, help="Optional override for box name (subdomain)")
     parser.add_argument("--box-id", type=int, default=None, help="Optional override for box ID")
-    parser.add_argument("--target-hour", type=int, default=int(os.environ.get("TARGET_HOUR", 18)), help="Target hour to run (0-23), default: 18")
+    # TARGET_HOUR_GMT1: booking open hour in GMT+1 / Madrid local time (Europe/Madrid).
+    # Falls back to TARGET_HOUR for backwards compatibility.
+    _default_hour = int(os.environ.get("TARGET_HOUR_GMT1", os.environ.get("TARGET_HOUR", 18)))
+    parser.add_argument("--target-hour", type=int, default=_default_hour, help="Target hour in Madrid time (0-23) to trigger booking, default: 18")
     parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 30)), help="Target minute to run (0-59), default: 30")
     parser.add_argument("--update-status", action="store_true", help="Just update the booking status JSON and exit")
     args = parser.parse_args()
@@ -375,9 +424,13 @@ def main():
         return
         
     # Book
-    book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
+    success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
 
-    print("\n🏁 Finished processing box.")
+    if success:
+        print("\n🏁 Booking completed successfully.")
+    else:
+        print("\n❌ Booking failed. Check the logs above for details.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
