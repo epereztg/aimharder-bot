@@ -308,7 +308,7 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
 
     # AimHarder returns bookState: 1 for confirmed, other values mean failure/waitlist
     book_state = resp_json.get("bookState")
-    error_msg = resp_json.get("bookError", resp_json.get("error", ""))
+    error_msg = resp_json.get("errorMssg", resp_json.get("bookError", resp_json.get("error", "")))
 
     if book_state == 1:
         print(f"✅ Successfully booked '{class_name}' at {display_time} on {full_date_str}")
