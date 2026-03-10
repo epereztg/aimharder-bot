@@ -303,11 +303,14 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
     except Exception:
         resp_json = {}
 
-    # AimHarder returns bookState: 1 for success, and may include error messages
+    # Always log the raw response so we can debug AimHarder's actual reply
+    print(f"📋 Booking API response (HTTP {response.status_code}): {resp_json}")
+
+    # AimHarder returns bookState: 1 for confirmed, other values mean failure/waitlist
     book_state = resp_json.get("bookState")
     error_msg = resp_json.get("bookError", resp_json.get("error", ""))
 
-    if book_state == 1 or response.ok and not error_msg:
+    if book_state == 1:
         print(f"✅ Successfully booked '{class_name}' at {display_time} on {full_date_str}")
         send_telegram_notification(
             f"✅ <b>Booking CONFIRMED</b>\n"
@@ -318,14 +321,15 @@ def book_class(session: requests.Session, class_info: dict, target_date: datetim
         )
         return True
     else:
-        print(f"❌ Booking failed. bookState={book_state}, error={error_msg}")
+        reason = error_msg or f"bookState={book_state}"
+        print(f"❌ Booking not confirmed. {reason}")
         send_telegram_notification(
             f"❌ <b>Booking FAILED</b>\n"
             f"<b>Box:</b> {box_name}\n"
             f"<b>Class:</b> {class_name}\n"
             f"<b>Time:</b> {display_time}\n"
             f"<b>Date:</b> {full_date_str}\n"
-            f"<b>Reason:</b> {error_msg or 'Unknown'}"
+            f"<b>Reason:</b> {reason}"
         )
         return False
 
