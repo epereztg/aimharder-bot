@@ -54,8 +54,8 @@ def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool
         remaining = (target - now).total_seconds()
 
         if remaining <= 0:
-            # Sleep 10ms past the target so the booking window is open
-            time.sleep(0.01)
+            # Sleep 1s past the target so the booking window is open
+            time.sleep(1)
             print("✅ Target time reached! Proceeding with booking...")
             break
 
