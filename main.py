@@ -24,44 +24,49 @@ from bot_utils import (
 
 def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool = False) -> None:
     """
-    Wait until the target booking time (e.g. 7:00 AM Madrid).
-    This handles both winter (UTC+1) and summer (UTC+2) time automatically.
+    Wait until the target booking time (e.g. 12:00 Madrid).
+    Handles both winter (UTC+1) and summer (UTC+2) automatically.
+    Sleeps 10ms past the target so the booking window is guaranteed to be open.
     """
     if skip_wait:
         print("⏩ Skipping wait (--skip-wait flag set)")
         return
-    
+
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
-    
+
     # Create target time for today
     target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
-    
+
     # If we're past target time, no need to wait
     if now >= target:
         print(f"⏰ Current time ({now.strftime('%H:%M:%S')}) is past target ({target.strftime('%H:%M')}). Proceeding immediately.")
         return
-    
+
     wait_seconds = (target - now).total_seconds()
     print(f"⏳ Current Madrid time: {now.strftime('%H:%M:%S')}")
     print(f"⏳ Target time: {target.strftime('%H:%M:%S')}")
     print(f"⏳ Waiting {wait_seconds:.0f} seconds ({wait_seconds/60:.1f} minutes)...")
-    
+
     # Wait in chunks to show progress
     while True:
         now = datetime.now(tz)
         remaining = (target - now).total_seconds()
-        
+
         if remaining <= 0:
+            # Sleep 10ms past the target so the booking window is open
+            time.sleep(0.01)
             print("✅ Target time reached! Proceeding with booking...")
             break
-        
+
         # Sleep for min(30 seconds, remaining time)
         sleep_time = min(30, remaining)
         time.sleep(sleep_time)
-        
+
         if remaining > 30:
             print(f"   ⏳ {remaining:.0f}s remaining...")
+
+
 
 
 def load_schedule(path: str = "schedule.json") -> dict:
@@ -427,13 +432,27 @@ def main():
         print(f"ℹ️ Skipping booking: Already booked.")
         return
         
-    # Book
-    success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
+
+    # Book — retry quickly (no re-login between attempts).
+    # AimHarder may still return {'logout': 1} if the request lands a few ms early;
+    # a fast retry keeps us competitive for the spot.
+    MAX_RETRIES = 5
+    RETRY_DELAY_SECONDS = 0.2   # 200ms — fast enough to not lose the spot
+    success = False
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        if attempt > 1:
+            print(f"⏳ Retry {attempt}/{MAX_RETRIES} ({RETRY_DELAY_SECONDS*1000:.0f}ms pause)...")
+            time.sleep(RETRY_DELAY_SECONDS)
+
+        success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
+        if success:
+            break
 
     if success:
         print("\n🏁 Booking completed successfully.")
     else:
-        print("\n❌ Booking failed. Check the logs above for details.")
+        print("\n❌ Booking failed after all retries. Check the logs above for details.")
         sys.exit(1)
 
 
