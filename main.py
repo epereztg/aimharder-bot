@@ -26,7 +26,7 @@ def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool
     """
     Wait until the target booking time (e.g. 12:00 Madrid).
     Handles both winter (UTC+1) and summer (UTC+2) automatically.
-    Sleeps 10ms past the target so the booking window is guaranteed to be open.
+    Sleeps 1s past the target so the booking window is guaranteed to be open.
     """
     if skip_wait:
         print("⏩ Skipping wait (--skip-wait flag set)")
@@ -437,7 +437,7 @@ def main():
     # AimHarder may still return {'logout': 1} if the request lands a few ms early;
     # a fast retry keeps us competitive for the spot.
     MAX_RETRIES = 5
-    RETRY_DELAY_SECONDS = 0.2   # 200ms — fast enough to not lose the spot
+    RETRY_DELAY_SECONDS = 1   # 1s delay between retries
     success = False
 
     for attempt in range(1, MAX_RETRIES + 1):
