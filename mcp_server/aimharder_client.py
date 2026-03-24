@@ -249,6 +249,25 @@ def find_attendees(
     return []
 
 
+def logout(
+    session: requests.Session,
+    box_name: str,
+) -> None:
+    """
+    Log out by hitting the AimHarder logout endpoint and clearing session cookies.
+    """
+    try:
+        session.get(
+            f"{_base_url(box_name)}/logout",
+            headers={"Referer": _base_url(box_name)},
+            allow_redirects=True,
+            timeout=10,
+        )
+    except Exception:
+        pass
+    session.cookies.clear()
+
+
 def find_attendees_by_name(
     session: requests.Session,
     name_query: str,

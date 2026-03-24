@@ -267,6 +267,27 @@ def find_attendees_by_name(name: str, date: str = "") -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Tool: logout
+# ---------------------------------------------------------------------------
+@mcp.tool()
+def logout() -> dict:
+    """
+    Log out of AimHarder and clear the cached session.
+
+    Returns:
+        A result dict with:
+        - success: True
+        - message: confirmation message
+    """
+    global _session
+    if _session is not None:
+        box_name, _ = _box()
+        ah.logout(_session, box_name)
+        _session = None
+    return {"success": True, "message": "Logged out successfully."}
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
