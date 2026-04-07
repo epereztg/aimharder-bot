@@ -38,8 +38,8 @@ cp .env.example .env
 ```
 EMAIL=your@email.com
 PASSWORD=your_aimharder_password
-BOX_NAME=wezonearturosoria   # subdomain of your box's URL
-BOX_ID=10002                 # numeric ID from the Aimharder dashboard
+BOX_NAME=your_box_name       # subdomain of your box's URL
+BOX_ID=your_box_id           # numeric ID from the Aimharder dashboard
 ```
 
 > How to find your `BOX_ID`: open your box's AimHarder URL, open DevTools → Network,
@@ -71,13 +71,13 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "aimharder": {
-      "command": "/Users/elenap/Documents/temp/aimharder-bot/mcp_server/.venv/bin/python",
-      "args": ["/Users/elenap/Documents/temp/aimharder-bot/mcp_server/server.py"],
+      "command": "/path/to/mcp-server/.venv/bin/python",
+      "args": ["/path/to/mcp-server/server.py"],
       "env": {
         "EMAIL": "your@email.com",
         "PASSWORD": "your_password",
-        "BOX_NAME": "wezonearturosoria",
-        "BOX_ID": "10002"
+        "BOX_NAME": "your_box_name",
+        "BOX_ID": "your_box_id"
       }
     }
   }
@@ -96,13 +96,13 @@ Add to your `.cursor/mcp.json` (or equivalent):
 {
   "mcpServers": {
     "aimharder": {
-      "command": "/Users/elenap/Documents/temp/aimharder-bot/mcp_server/.venv/bin/python",
-      "args": ["/Users/elenap/Documents/temp/aimharder-bot/mcp_server/server.py"],
+      "command": "/path/to/mcp-server/.venv/bin/python",
+      "args": ["/path/to/mcp-server/server.py"],
       "env": {
         "EMAIL": "your@email.com",
         "PASSWORD": "your_password",
-        "BOX_NAME": "wezonearturosoria",
-        "BOX_ID": "10002"
+        "BOX_NAME": "your_box_name",
+        "BOX_ID": "your_box_id"
       }
     }
   }
