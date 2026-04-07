@@ -44,8 +44,8 @@ def login(
     }
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Origin": "https://login.aimharder.com",
-        "Referer": "https://login.aimharder.com/",
+        "Origin": LOGIN_URL.rstrip("/"),
+        "Referer": LOGIN_URL,
         "User-Agent": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"

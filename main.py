@@ -17,7 +17,7 @@ import requests
 
 # Import shared utilities
 from bot_utils import (
-    login, send_telegram_notification, get_spanish_date_str, fetch_wod,
+    login, send_telegram_notification, fetch_wod,
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
 

@@ -15,9 +15,6 @@
         "time": "17:30",
         "class_name": "Crossfit"
     },
-    "Saturday": {
-        "time": "12:00",
-        "class_name": "Open Box"
-    },
+    "Saturday": null,
     "Sunday": null
 }
