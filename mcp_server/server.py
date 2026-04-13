@@ -24,7 +24,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 # Load .env if present
 try:
@@ -36,7 +36,9 @@ except ImportError:
 import pytz
 from mcp.server.fastmcp import FastMCP
 
-import aimharder_client as ah
+# Append parent dir so we can import root modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from client import AimHarderClient
 
 # ---------------------------------------------------------------------------
 # Configuration helpers
@@ -70,23 +72,17 @@ def _today() -> str:
 # ---------------------------------------------------------------------------
 # Session management (cached per process)
 # ---------------------------------------------------------------------------
-_session: Any = None  # requests.Session once authenticated
+_client: Optional[AimHarderClient] = None
 
-
-def _get_session() -> Any:
-    global _session
-    if _session is None:
+def _get_client() -> AimHarderClient:
+    global _client
+    if _client is None:
         email = _get_env("EMAIL")
         password = _get_env("PASSWORD")
         box_name = _get_env("BOX_NAME")
         box_id = int(_get_env("BOX_ID"))
-        _session = ah.login(email, password, box_name, box_id)
-    return _session
-
-
-def _box() -> tuple[str, int]:
-    return _get_env("BOX_NAME"), int(_get_env("BOX_ID"))
-
+        _client = AimHarderClient(email, password, box_name, box_id)
+    return _client
 
 # ---------------------------------------------------------------------------
 # MCP Server
@@ -122,9 +118,8 @@ def list_classes(date: str = "") -> list[dict]:
         - booked: whether the authenticated user is already booked
     """
     target_date = _parse_date(date or _today())
-    box_name, box_id = _box()
-    session = _get_session()
-    classes = ah.list_classes(session, target_date, box_name, box_id)
+    client = _get_client()
+    classes = client.list_classes(target_date)
 
     # Return a cleaned-up version that is easy for LLMs to reason about
     result = []
@@ -173,18 +168,20 @@ def book_class(class_id: str, date: str = "") -> dict:
         - raw: full API response for debugging
     """
     target_date = _parse_date(date or _today())
-    box_name, box_id = _box()
-    session = _get_session()
+    client = _get_client()
 
-    raw = ah.book_class(session, class_id, target_date, box_name, box_id)
-    book_state = raw.get("bookState")
-    error_msg = raw.get("errorMssg", raw.get("bookError", raw.get("error", "")))
-
-    if book_state == 1:
-        return {"success": True, "bookState": book_state, "message": "Booking confirmed!", "raw": raw}
-    else:
-        reason = error_msg or f"bookState={book_state}"
-        return {"success": False, "bookState": book_state, "message": reason, "raw": raw}
+    try:
+        raw = client.book_class(class_id, target_date)
+        book_state = raw.get("bookState")
+        error_msg = raw.get("errorMssg", raw.get("bookError", raw.get("error", "")))
+        
+        if book_state == 1:
+            return {"success": True, "bookState": book_state, "message": "Booking confirmed!", "raw": raw}
+        else:
+            reason = error_msg or f"bookState={book_state}"
+            return {"success": False, "bookState": book_state, "message": reason, "raw": raw}
+    except Exception as e:
+        return {"success": False, "bookState": -1, "message": str(e), "raw": {}}
 
 
 # ---------------------------------------------------------------------------
@@ -206,24 +203,26 @@ def cancel_booking(class_id: str, date: str = "") -> dict:
         - raw: full API response for debugging
     """
     target_date = _parse_date(date or _today())
-    box_name, box_id = _box()
-    session = _get_session()
+    client = _get_client()
 
-    raw = ah.cancel_booking(session, class_id, target_date, box_name, box_id)
-    book_state = raw.get("bookState")
-    error_msg = raw.get("errorMssg", raw.get("bookError", raw.get("error", "")))
+    try:
+        raw = client.cancel_booking(class_id, target_date)
+        book_state = raw.get("bookState")
+        error_msg = raw.get("errorMssg", raw.get("bookError", raw.get("error", "")))
 
-    # bookState 0 or None after delete typically means cancelled
-    success = book_state in (0, None) or raw.get("success") is True
-    message = error_msg if not success else "Booking cancelled."
-    return {"success": success, "bookState": book_state, "message": message, "raw": raw}
+        # bookState 0 or None after delete typically means cancelled
+        success = book_state in (0, None) or raw.get("success") is True
+        message = error_msg if not success else "Booking cancelled."
+        return {"success": success, "bookState": book_state, "message": message, "raw": raw}
+    except Exception as e:
+        return {"success": False, "bookState": -1, "message": str(e), "raw": {}}
 
 
 # ---------------------------------------------------------------------------
 # Tool: find_attendees
 # ---------------------------------------------------------------------------
 @mcp.tool()
-def find_attendees(class_id: str, date: str = "") -> list[dict]:
+def find_attendees(class_id: str, date: str = "") -> dict:
     """
     Get the list of members booked into a specific class.
 
@@ -232,14 +231,14 @@ def find_attendees(class_id: str, date: str = "") -> list[dict]:
         date: Date in YYYY-MM-DD format. Defaults to today (Madrid time).
 
     Returns:
-        A list of attendee objects. Each typically contains:
-        - name, surname: member's name
-        - id: member ID
+        A dict with:
+        - result: list of attendee objects (name, surname, id)
+        - debug: raw API response for troubleshooting
     """
     target_date = _parse_date(date or _today())
-    box_name, box_id = _box()
-    session = _get_session()
-    return ah.find_attendees(session, class_id, target_date, box_name, box_id)
+    client = _get_client()
+    attendees, raw_debug = client.find_attendees_debug(class_id, target_date)
+    return {"result": attendees, "debug": raw_debug}
 
 
 # ---------------------------------------------------------------------------
@@ -261,9 +260,8 @@ def find_attendees_by_name(name: str, date: str = "") -> list[dict]:
         'class_info' field with the class id, name, and time.
     """
     target_date = _parse_date(date or _today())
-    box_name, box_id = _box()
-    session = _get_session()
-    return ah.find_attendees_by_name(session, name, target_date, box_name, box_id)
+    client = _get_client()
+    return client.find_attendees_by_name(name, target_date)
 
 
 # ---------------------------------------------------------------------------
@@ -279,11 +277,10 @@ def logout() -> dict:
         - success: True
         - message: confirmation message
     """
-    global _session
-    if _session is not None:
-        box_name, _ = _box()
-        ah.logout(_session, box_name)
-        _session = None
+    global _client
+    if _client is not None:
+        _client.logout()
+        _client = None
     return {"success": True, "message": "Logged out successfully."}
 
 

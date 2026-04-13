@@ -17,6 +17,15 @@ This Python application runs in GitHub Actions to automatically book classes on 
     pip install -r requirements.txt
     ```
 
+## Architecture
+
+The codebase leverages a clean, Object-Oriented design:
+- `client.py`: Provides the unified `AimHarderClient` class which manages authentication, session state, and all HTTP endpoint interactions.
+- `exceptions.py`: Contains custom exceptions like `BookingFailed` and `IncorrectCredentials` for better flow control.
+- `main.py`: The primary CLI script and GitHub Actions runner.
+- `bot_utils.py`: Contains helpers for parsing dates and sending Telegram notifications.
+- `mcp_server/`: A Model Context Protocol (MCP) server that empowers AI assistants to interact safely with the shared API client.
+
 ## Configuration
 
 Each box is configured with its own schedule file and GitHub Actions workflow.

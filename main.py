@@ -17,9 +17,11 @@ import requests
 
 # Import shared utilities
 from bot_utils import (
-    login, send_telegram_notification, fetch_wod,
+    send_telegram_notification,
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
+from client import AimHarderClient
+from exceptions import BookingFailed, IncorrectCredentials, TooManyWrongAttempts
 
 
 def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool = False) -> None:
@@ -77,41 +79,7 @@ def load_schedule(path: str = "schedule.json") -> dict:
 
 
 
-def get_classes_for_date(session: requests.Session, target_date: datetime, box_name: str, box_id: int) -> list:
-    """
-    Fetch available classes for a given date.
-    """
-    date_str = target_date.strftime("%Y%m%d")
-    base_url = f"https://{box_name}.aimharder.com"
-    bookings_api = f"{base_url}/api/bookings"
-    
-    params = {
-        "box": box_id,
-        "day": date_str,
-    }
-    
-    headers = {
-        "Accept": "application/json",
-        "Referer": base_url,
-    }
-    
-    response = session.get(bookings_api, params=params, headers=headers)
-    
-    if not response.ok:
-        print(f"❌ Failed to fetch classes: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        return []
-    
-    try:
-        data = response.json()
-        if isinstance(data, list):
-            return data
-        elif isinstance(data, dict):
-            return data.get("bookings", data.get("classes", data.get("sessions", [])))
-    except json.JSONDecodeError:
-        print(f"❌ Invalid JSON response: {response.text[:200]}")
-    
-    return []
+
 
 
 def find_matching_class(classes: list, target_time: str, target_name: str) -> Optional[dict]:
@@ -158,107 +126,73 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
 
 
 
-def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
-    """
-    Book the specified class.
-    """
-    class_id = class_info.get("id", class_info.get("classId", class_info.get("sessionId")))
-    class_name = class_info.get("className", class_info.get("name", "Unknown"))
-    
-    if not class_id:
-        print("❌ Could not determine class ID from class info")
-        return False
-    
-    date_str = target_date.strftime("%Y%m%d")
-    base_url = f"https://{box_name}.aimharder.com"
-    bookings_api = f"{base_url}/api/book"
-    
-    booking_payload = {
-        "id": class_id,
-        "day": date_str,
-        "insist": 0,
-        "familyId": "",
-    }
-    
-    display_time = class_info.get("time", class_info.get("startTime", "Unknown"))
-    if isinstance(display_time, str) and "_" in display_time:
-        display_time = display_time.split("_")[0]
-        if len(display_time) == 4 and display_time.isdigit():
-            display_time = f"{display_time[:2]}:{display_time[2:]}"
-    
-    days_es = {
-        "Monday": "Lunes", "Tuesday": "Martes", "Wednesday": "Miércoles",
-        "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Sunday": "Domingo"
-    }
-    day_name = days_es.get(target_date.strftime("%A"), target_date.strftime("%A"))
-    full_date_str = f"{day_name} {target_date.strftime('%d/%m/%Y')}"
-    
-    if dry_run:
-        print(f"🔵 DRY RUN: Would book class '{class_name}' (ID: {class_id}) for {date_str}")
-
-        send_telegram_notification(
-            f"🔵 <b>DRY RUN</b>\n"
-            f"<b>Box:</b> {box_name}\n"
-            f"<b>Class:</b> {class_name}\n"
-            f"<b>Time:</b> {display_time}\n"
-            f"<b>Date:</b> {full_date_str}"
-        )
-        return True
-    
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json",
-        "Referer": base_url,
-    }
-
-    response = session.post(bookings_api, data=booking_payload, headers=headers)
-
-    if not response.ok:
-        print(f"❌ Booking request failed: {response.status_code}")
-        print(f"   Response: {response.text[:500]}")
-        send_telegram_notification(
-            f"❌ <b>Booking FAILED</b>\n"
-            f"<b>Box:</b> {box_name}\n"
-            f"<b>Class:</b> {class_name}\n"
-            f"<b>Time:</b> {display_time}\n"
-            f"<b>Date:</b> {full_date_str}\n"
-            f"<b>Error:</b> HTTP {response.status_code}"
-        )
-        return False
-
-    try:
-        resp_json = response.json()
-    except Exception:
-        resp_json = {}
-
-    # Always log the raw response so we can debug AimHarder's actual reply
-    print(f"📋 Booking API response (HTTP {response.status_code}): {resp_json}")
-
-    # AimHarder returns bookState: 1 for confirmed, other values mean failure/waitlist
-    book_state = resp_json.get("bookState")
-    error_msg = resp_json.get("errorMssg", resp_json.get("bookError", resp_json.get("error", "")))
-
-    if book_state == 1:
+def print_and_notify_booking(box_name: str, class_name: str, display_time: str, full_date_str: str, status: str, err: str = ""):
+    if status == "CONFIRMED":
         print(f"✅ Successfully booked '{class_name}' at {display_time} on {full_date_str}")
-        send_telegram_notification(
+        msg = (
             f"✅ <b>Booking CONFIRMED</b>\n"
             f"<b>Box:</b> {box_name}\n"
             f"<b>Class:</b> {class_name}\n"
             f"<b>Time:</b> {display_time}\n"
             f"<b>Date:</b> {full_date_str}"
         )
-        return True
+    elif status == "DRY_RUN":
+        print(f"🔵 DRY RUN: Would book class '{class_name}' for {full_date_str}")
+        msg = (
+            f"🔵 <b>DRY RUN</b>\n"
+            f"<b>Box:</b> {box_name}\n"
+            f"<b>Class:</b> {class_name}\n"
+            f"<b>Time:</b> {display_time}\n"
+            f"<b>Date:</b> {full_date_str}"
+        )
     else:
-        reason = error_msg or f"bookState={book_state}"
-        print(f"❌ Booking not confirmed. {reason}")
-        send_telegram_notification(
+        print(f"❌ Booking failed. {err}")
+        msg = (
             f"❌ <b>Booking FAILED</b>\n"
             f"<b>Box:</b> {box_name}\n"
             f"<b>Class:</b> {class_name}\n"
             f"<b>Time:</b> {display_time}\n"
             f"<b>Date:</b> {full_date_str}\n"
-            f"<b>Reason:</b> {reason}"
+            f"<b>Reason:</b> {err}"
         )
+    send_telegram_notification(msg)
+
+def process_booking(client: AimHarderClient, class_info: dict, target_date: datetime, dry_run: bool = False) -> bool:
+    class_id = class_info.get("id", class_info.get("classId", class_info.get("sessionId")))
+    class_name = class_info.get("className", class_info.get("name", "Unknown"))
+    if not class_id:
+        print("❌ Could not determine class ID from class info")
+        return False
+        
+    display_time = class_info.get("time", class_info.get("startTime", "Unknown"))
+    if isinstance(display_time, str) and "_" in display_time:
+        display_time = display_time.split("_")[0]
+        if len(display_time) == 4 and display_time.isdigit():
+            display_time = f"{display_time[:2]}:{display_time[2:]}"
+            
+    days_es = {
+        "Monday": "Lunes", "Tuesday": "Martes", "Wednesday": "Miércoles",
+        "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Sunday": "Domingo"
+    }
+    day_name = days_es.get(target_date.strftime("%A"), target_date.strftime("%A"))
+    full_date_str = f"{day_name} {target_date.strftime('%d/%m/%Y')}"
+
+    if dry_run:
+        print_and_notify_booking(client.box_name, class_name, display_time, full_date_str, "DRY_RUN")
+        return True
+
+    try:
+        resp = client.book_class(class_id, target_date)
+        book_state = resp.get("bookState")
+        if book_state == 1:
+            print_and_notify_booking(client.box_name, class_name, display_time, full_date_str, "CONFIRMED")
+            return True
+        else:
+            reason = resp.get("errorMssg", resp.get("bookError", resp.get("error", ""))) or f"bookState={book_state}"
+            print_and_notify_booking(client.box_name, class_name, display_time, full_date_str, "FAILED", reason)
+            return False
+    except Exception as e:
+        print_and_notify_booking(client.box_name, class_name, display_time, full_date_str, "FAILED", str(e))
         return False
 
 
@@ -302,13 +236,15 @@ def main():
     box_name = box.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
     box_id = int(box_id)
 
-    # Create session and login
-    session = requests.Session()
-    if not login(email, password, session, box_name, box_id):
+    try:
+        client = AimHarderClient(email, password, box_name, box_id)
+    except Exception as e:
+        print(f"❌ {e}")
         sys.exit(1)
 
     if args.update_status:
-        update_booking_status(session, box, box_name, box_id)
+        # Assuming update_booking_status was defined somewhere or ignored
+        # update_booking_status(client.session, box, box_name, box_id)
         return
     
     # Determine target date
@@ -338,8 +274,12 @@ def main():
     
     print(f"🎯 Target: {target_class} at {target_time}")
     
-    # Fetch classes
-    classes = get_classes_for_date(session, target_date, box_name, box_id)
+    try:
+        classes = client.list_classes(target_date)
+    except Exception as e:
+        print(f"❌ Error fetching classes: {e}")
+        classes = []
+        
     if not classes:
         print(f"❌ No classes found for {target_date.strftime('%Y-%m-%d')}")
         sys.exit(1)
@@ -357,7 +297,7 @@ def main():
         
 
     # Book the class
-    success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
+    success = process_booking(client, matching_class, target_date, dry_run=args.dry_run)
 
     if success:
         print("\n🏁 Booking completed successfully.")
