@@ -9,9 +9,9 @@ from typing import Optional
 LOGIN_URL = "https://login.aimharder.com/"
 TIMEZONE = "Europe/Madrid"
 
-# Default box configuration
-DEFAULT_BOX_NAME = "wezonearturosoria"
-DEFAULT_BOX_ID = 10002
+# Default box configuration — read from environment 
+DEFAULT_BOX_NAME = os.environ.get("BOX_NAME", "")
+DEFAULT_BOX_ID = int(os.environ.get("BOX_ID", 0))
 
 def login(email: str, password: str, session: requests.Session, box_name: str, box_id: int) -> bool:
     """
@@ -135,7 +135,8 @@ def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -
         
     try:
         data = act_response.json()
-    except:
+    except Exception as e:
+        print(f"⚠️ Failed to parse Activity JSON: {e}")
         return None
 
     target_date_str = get_spanish_date_str(target_date)

@@ -62,7 +62,6 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
     # STEP 2: Fetch activity feed data
     # ============================================================================
     activity_url = f"https://{box_name}.aimharder.com/api/activity"
-    print(f"🔄 activity_url: {activity_url}")
     params = {
         "timeLineFormat": 0,
         "timeLineContent": 100,  # Fetch up to 100 activity items
@@ -70,7 +69,6 @@ def notify_all_workouts(session: requests.Session, box_name: str, days_ahead: in
     }
     
     act_response = session.get(activity_url, params=params)
-    print(f"🔄 act_response: {act_response}")
     if not act_response.ok:
         print(f"⚠️ Failed to fetch activity: {act_response.status_code}")
         return False

@@ -17,7 +17,7 @@ import requests
 
 # Import shared utilities
 from bot_utils import (
-    login, send_telegram_notification, get_spanish_date_str, fetch_wod,
+    login, send_telegram_notification, fetch_wod,
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
 
@@ -156,83 +156,6 @@ def find_matching_class(classes: list, target_time: str, target_name: str) -> Op
 
 
 
-
-def fetch_wod(session: requests.Session, box_name: str, target_date: datetime) -> Optional[str]:
-    """
-    Fetch the WOD for the target date from the main dashboard context.
-    The WOD is typically in a timeline feed.
-    """
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        print("⚠️ BeautifulSoup not found. Cannot fetch WOD.")
-        return None
-
-    url = f"https://{box_name}.aimharder.com/"
-    print(f"🔄 Fetching WOD from {url}...")
-    
-    response = session.get(url)
-    if not response.ok:
-        print(f"⚠️ Failed to fetch dashboard: {response.status_code}")
-        return None
-    import re
-    user_id_match = re.search(r"userID:\s*(\d+)", response.text)
-    if not user_id_match:
-        print("⚠️ Could not find userID in dashboard HTML.")
-        return None
-    
-    user_id = user_id_match.group(1)
-    
-    # Fetch Activity Feed (AJAX)
-    activity_url = f"https://{box_name}.aimharder.com/api/activity"
-    params = {
-        "timeLineFormat": 0,
-        "timeLineContent": 7,
-        "userID": user_id
-    }
-    
-    act_response = session.get(activity_url, params=params)
-    if not act_response.ok:
-        print(f"⚠️ Failed to fetch activity: {act_response.status_code}")
-        return None
-        
-    try:
-        data = act_response.json()
-    except Exception as e:
-        print(f"⚠️ Failed to parse Activity JSON: {e}")
-        return None
-
-    target_date_str = get_spanish_date_str(target_date)
-    print(f"   Looking for WOD for date: {target_date_str}")
-    
-    if "elements" not in data:
-        print("ℹ️ No 'elements' in activity feed.")
-        return None
-        
-    wods_found = []
-    
-    for element in data.get("elements", []):
-        if element.get("day") == target_date_str:
-            wod_class = element.get("wodClass", "General")
-            
-            # Extract notes from TIPOWODs
-            notes_parts = []
-            tipos = element.get("TIPOWODs", [])
-            for tipo in tipos:
-                note_html = tipo.get("notes", "")
-                if note_html:
-                    # Clean HTML
-                    soup_note = BeautifulSoup(note_html, "html.parser")
-                    text = soup_note.get_text(separator="\n")
-                    notes_parts.append(text.strip())
-            
-            if notes_parts:
-                full_text = "\n\n".join(notes_parts)
-                wods_found.append(f"📌 {wod_class}:\n{full_text}")
-    
-    if not wods_found:
-        print(f"ℹ️ No WODs found for {target_date_str} in activity feed.")
-    return "\n\n".join(wods_found)
 
 
 def book_class(session: requests.Session, class_info: dict, target_date: datetime, box_name: str, box_id: int, dry_run: bool = False) -> bool:
@@ -433,26 +356,13 @@ def main():
         return
         
 
-    # Book — retry quickly (no re-login between attempts).
-    # AimHarder may still return {'logout': 1} if the request lands a few ms early;
-    # a fast retry keeps us competitive for the spot.
-    MAX_RETRIES = 5
-    RETRY_DELAY_SECONDS = 1   # 1s delay between retries
-    success = False
-
-    for attempt in range(1, MAX_RETRIES + 1):
-        if attempt > 1:
-            print(f"⏳ Retry {attempt}/{MAX_RETRIES} ({RETRY_DELAY_SECONDS*1000:.0f}ms pause)...")
-            time.sleep(RETRY_DELAY_SECONDS)
-
-        success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
-        if success:
-            break
+    # Book the class
+    success = book_class(session, matching_class, target_date, box_name, box_id, dry_run=args.dry_run)
 
     if success:
         print("\n🏁 Booking completed successfully.")
     else:
-        print("\n❌ Booking failed after all retries. Check the logs above for details.")
+        print("\n❌ Booking failed. Check the logs above for details.")
         sys.exit(1)
 
 
