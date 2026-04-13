@@ -6,9 +6,6 @@ on:
     - cron: "0 20 * 3-10 *"        # Summer (22:00 Madrid) - Daily
   workflow_dispatch:              # Manual trigger
 
-env:
-  IMAGE: ghcr.io/epereztg/aimharder-bot:latest
-
 jobs:
   notify:
     runs-on: ubuntu-latest

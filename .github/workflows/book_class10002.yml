@@ -1,4 +1,4 @@
-name: AimHarder Bot WZ
+name: Book WZ
 
 on:
   schedule:
@@ -8,9 +8,6 @@ on:
     - cron: "15 16 * 1,2,11,12 *"   # Winter (Nov-Feb): 16:15 UTC = 17:15 CET  (UTC+1)
     - cron: "15 15 * 3-10 *"        # Summer (Mar-Oct): 15:15 UTC = 17:15 CEST (UTC+2)
   workflow_dispatch:              # Manual trigger
-
-env:
-  IMAGE: ghcr.io/epereztg/aimharder-bot:latest
 
 jobs:
   book:
@@ -38,7 +35,7 @@ jobs:
           # TARGET_HOUR_GMT1: booking open time in Madrid local time (NOT UTC).
           # The Python script (wait_until_target_time) converts this to UTC internally using pytz.
           TARGET_HOUR_GMT1: 18
-          TARGET_MINUTE: 30  # minutes, also in Madrid local time
+          TARGET_MINUTE: 30
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
