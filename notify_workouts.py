@@ -13,10 +13,11 @@ import pytz
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from bot_utils import (
-    login, send_telegram_notification, get_spanish_date_str, 
+    send_telegram_notification, get_spanish_date_str, 
     get_full_spanish_date_str,
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
+from client import AimHarderClient
 
 
 def normalize(s):
@@ -313,11 +314,12 @@ def main():
         sys.exit(1)
     
     # Login and fetch workouts
-    session = requests.Session()
-    if not login(email, password, session, args.box_name, args.box_id):
+    try:
+        client = AimHarderClient(email, password, args.box_name, args.box_id)
+        notify_all_workouts(client.session, args.box_name, args.days_ahead)
+    except Exception as e:
+        print(f"❌ Login failed: {e}")
         sys.exit(1)
-    
-    notify_all_workouts(session, args.box_name, args.days_ahead)
 
 
 if __name__ == "__main__":

@@ -5,8 +5,6 @@ Exposes four tools to AI agents via the Model Context Protocol (MCP):
   • list_classes       – list all classes for a given date
   • book_class         – book a class by ID
   • cancel_booking     – cancel an existing booking
-  • find_attendees     – list members booked into a specific class
-  • find_attendees_by_name – search for a person across all classes on a date
 
 Usage:
     python server.py                    # stdio transport (default)
@@ -91,8 +89,8 @@ mcp = FastMCP(
     name="aimharder",
     instructions=(
         "You are connected to the AimHarder box management system. "
-        "Use the available tools to list classes, make/cancel bookings, "
-        "and look up who is attending a class."
+        "Use the available tools to list classes, check the daily workout (WOD), "
+        "and make/cancel bookings."
     ),
 )
 
@@ -218,50 +216,91 @@ def cancel_booking(class_id: str, date: str = "") -> dict:
         return {"success": False, "bookState": -1, "message": str(e), "raw": {}}
 
 
+
+
 # ---------------------------------------------------------------------------
-# Tool: find_attendees
+# Tool: get_wod
 # ---------------------------------------------------------------------------
 @mcp.tool()
-def find_attendees(class_id: str, date: str = "") -> dict:
+def get_wod(date: str = "") -> dict:
     """
-    Get the list of members booked into a specific class.
+    Get the Workout of the Day (WOD) description from the gym's activity feed.
 
     Args:
-        class_id: The class ID returned by list_classes.
         date: Date in YYYY-MM-DD format. Defaults to today (Madrid time).
 
     Returns:
         A dict with:
-        - result: list of attendee objects (name, surname, id)
-        - debug: raw API response for troubleshooting
+        - success: True if WOD found, False otherwise.
+        - wod: The multi-line string description of the workout.
+        - message: Additional context.
     """
     target_date = _parse_date(date or _today())
     client = _get_client()
-    attendees, raw_debug = client.find_attendees_debug(class_id, target_date)
-    return {"result": attendees, "debug": raw_debug}
+    
+    try:
+        wod_text = client.fetch_wod(target_date)
+        if wod_text:
+            return {"success": True, "wod": wod_text, "message": "WOD retrieved successfully."}
+        else:
+            return {
+                "success": False, 
+                "wod": "", 
+                "message": f"No WOD found for {target_date.strftime('%Y-%m-%d')}. Note: WODs might only be published on the same day."
+            }
+    except Exception as e:
+        return {"success": False, "wod": "", "message": f"Failed to fetch WOD: {e}"}
 
 
 # ---------------------------------------------------------------------------
-# Tool: find_attendees_by_name
+# Tool: get_my_bookings
 # ---------------------------------------------------------------------------
 @mcp.tool()
-def find_attendees_by_name(name: str, date: str = "") -> list[dict]:
+def get_my_bookings(days_ahead: int = 7) -> list[dict]:
     """
-    Search for a person by name across ALL classes on a given date.
-
-    Useful when you know someone's name but not which class they are in.
+    Search upcoming days for classes that the authenticated user has already booked.
 
     Args:
-        name: Partial or full name to search for (case-insensitive).
-        date: Date in YYYY-MM-DD format. Defaults to today (Madrid time).
+        days_ahead: Number of days starting from today to check. Defaults to 7.
 
     Returns:
-        A list of matches. Each item includes the attendee's info plus a
-        'class_info' field with the class id, name, and time.
+        A list of class objects that are currently booked by you.
     """
-    target_date = _parse_date(date or _today())
+    from datetime import timedelta
     client = _get_client()
-    return client.find_attendees_by_name(name, target_date)
+    tz = pytz.timezone(TIMEZONE)
+    today = datetime.now(tz)
+    
+    my_bookings = []
+    
+    for i in range(days_ahead):
+        d = today + timedelta(days=i)
+        try:
+            classes = client.list_classes(d)
+        except Exception:
+            continue
+            
+        for cls in classes:
+            is_booked = bool(cls.get("booked") or cls.get("isBooked") or cls.get("reservada"))
+            if is_booked:
+                time_raw = cls.get("timeid", cls.get("time", ""))
+                if isinstance(time_raw, str) and "_" in time_raw:
+                    parts = time_raw.split("_")
+                    t = parts[0]
+                    duration = parts[1] if len(parts) > 1 else ""
+                    time_display = f"{t[:2]}:{t[2:]} ({duration} min)" if len(t) == 4 else time_raw
+                else:
+                    time_display = str(time_raw)
+                
+                my_bookings.append({
+                    "date": d.strftime("%Y-%m-%d"),
+                    "id": cls.get("id"),
+                    "className": cls.get("className", cls.get("name", "")),
+                    "time": time_display,
+                    "coach": cls.get("coachName", cls.get("coach", "")),
+                })
+                
+    return my_bookings
 
 
 # ---------------------------------------------------------------------------

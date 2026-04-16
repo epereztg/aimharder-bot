@@ -126,70 +126,7 @@ class AimHarderClient:
         except json.JSONDecodeError:
             return {"raw": resp.text}
 
-    def find_attendees(self, class_id: Union[int, str], date: datetime) -> list[dict]:
-        import sys
-        url = f"{self._base_url()}/api/bookings"
-        params = {
-            "box": self.box_id,
-            "day": self._date_str(date),
-            "bookingId": str(class_id),
-        }
-        headers = {"Accept": "application/json", "Referer": self._base_url()}
 
-        resp = self.session.get(url, params=params, headers=headers)
-        print(f"[find_attendees] status={resp.status_code} url={resp.url}", file=sys.stderr)
-        if resp.ok:
-            try:
-                data = resp.json()
-                print(f"[find_attendees] raw response keys={list(data.keys()) if isinstance(data, dict) else type(data).__name__}", file=sys.stderr)
-                if isinstance(data, dict):
-                    for key in ("bookings", "members", "attendees", "users", "people"):
-                        val = data.get(key)
-                        if isinstance(val, list) and val and isinstance(val[0], dict):
-                            print(f"[find_attendees] key='{key}' first item keys={list(val[0].keys())}", file=sys.stderr)
-                            if "name" in val[0] or "surname" in val[0]:
-                                return val
-                if isinstance(data, list) and data and "name" in data[0]:
-                    return data
-            except json.JSONDecodeError:
-                pass
-
-        classes = self.list_classes(date)
-        for cls in classes:
-            if str(cls.get("id", "")) == str(class_id):
-                print(f"[find_attendees] fallback class keys={list(cls.keys())}", file=sys.stderr)
-                for key in ("usersBooked", "bookings", "members", "attendees"):
-                    attendees = cls.get(key)
-                    if isinstance(attendees, list):
-                        return attendees
-                break
-
-        return []
-
-    def find_attendees_by_name(self, name_query: str, date: datetime) -> list[dict]:
-        classes = self.list_classes(date)
-        results = []
-        name_lower = name_query.lower()
-
-        for cls in classes:
-            class_id = cls.get("id")
-            if class_id is None:
-                continue
-
-            attendees = self.find_attendees(class_id, date)
-            for person in attendees:
-                full_name = f"{person.get('name', '')} {person.get('surname', '')}".strip()
-                if name_lower in full_name.lower():
-                    results.append({
-                        **person,
-                        "class_info": {
-                            "id": class_id,
-                            "name": cls.get("className", cls.get("name", "")),
-                            "time": cls.get("timeid", cls.get("time", "")),
-                        },
-                    })
-
-        return results
 
     def logout(self):
         try:

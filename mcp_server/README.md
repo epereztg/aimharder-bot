@@ -11,8 +11,9 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 | `list_classes` | List all classes for a date |
 | `book_class` | Book a class by ID |
 | `cancel_booking` | Cancel an existing booking |
-| `find_attendees` | List members booked into a specific class |
-| `find_attendees_by_name` | Search for a person across all classes on a date |
+| `get_wod` | Fetch the Workout of the Day |
+| `get_my_bookings` | List your upcoming booked classes |
+| `get_wod` | Fetch the Workout of the Day |
 
 ---
 
@@ -131,7 +132,8 @@ Or call a quick syntax/import check:
 ## Example prompts (once connected to Claude)
 
 - *"What CrossFit classes are available tomorrow?"*
+- *"What is tomorrow's WOD?"*
+- *"What classes am I signed up for this week?"*
+- *"What is tomorrow's WOD?"*
 - *"Book the 19:00 class on 2026-03-25 (class ID 12345)."*
-- *"Is Maria García going to the 7am class today?"*
-- *"Who else is booked into the 18:00 WOD today?"*
 - *"Cancel my booking for class ID 12345 on 2026-03-25."*
