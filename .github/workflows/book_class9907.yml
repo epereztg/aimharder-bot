@@ -5,7 +5,7 @@ on:
     # GitHub Actions cron times are ALWAYS UTC.
     # Madrid is UTC+1 in winter (CET) and UTC+2 in summer (CEST).
     - cron: "10 10 * 1,2,11,12 *"   # Winter (Nov-Feb): 10:25 UTC = 11:25 CET  (UTC+1)
-    - cron: "10 9 * 3-10 *"         # Summer (Mar-Oct): 09:25 UTC = 11:25 CEST (UTC+2)
+    - cron: "00 8 * 3-10 *"         # Summer (Mar-Oct): 09:25 UTC = 11:25 CEST (UTC+2)
   workflow_dispatch:              # Manual trigger
 
 jobs:
