@@ -23,6 +23,10 @@ from bot_utils import (
 from client import AimHarderClient
 from exceptions import BookingFailed, IncorrectCredentials, TooManyWrongAttempts
 
+# Vercel Builder compatibility: Vercel automatically tries to convert "main.py" 
+# into a Serverless HTTP endpoint. It requires a dummy 'app' or 'handler'.
+handler = "Vercel CLI Dummy"
+
 
 def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool = False) -> None:
     """
