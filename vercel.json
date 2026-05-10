@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron?box=10002&days=2&target_h=18",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron?box=9907&days=2&target_h=12",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
