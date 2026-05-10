@@ -7,7 +7,6 @@ This Python application runs in GitHub Actions to automatically book classes on 
 -   **Automated Booking**: Runs daily to book classes several days in advance.
 -   **Schedule Based**: Uses per-box JSON schedule files (e.g., `schedule_10002.json`) to determine class times and names.
 -   **Configurable Timing**: Wait times and target booking windows are configurable per box directly in the GitHub Actions workflow.
--   **WOD Fetching**: Automatically fetches and logs the Workout of the Day (WOD) for booked classes.
 
 ## Setup
 
@@ -24,7 +23,6 @@ The codebase leverages a clean, Object-Oriented design:
 - `exceptions.py`: Contains custom exceptions like `BookingFailed` and `IncorrectCredentials` for better flow control.
 - `main.py`: The primary CLI script and GitHub Actions runner.
 - `bot_utils.py`: Contains helpers for parsing dates and sending Telegram notifications.
-- `mcp_server/`: A Model Context Protocol (MCP) server that empowers AI assistants to interact safely with the shared API client.
 
 ## Configuration
 
