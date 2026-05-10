@@ -24,20 +24,6 @@ class handler(BaseHTTPRequestHandler):
         
         box_suffix = qs.get("box", ["10002"])[0]
         days_ahead = qs.get("days", ["2"])[0]
-        target_h = qs.get("target_h", [None])[0]
-        
-        # Check timezone matching so we don't need to update Vercel UTC crons twice a year
-        if target_h is not None:
-            tz = pytz.timezone("Europe/Madrid")
-            now = datetime.now(tz)
-            if now.hour != int(target_h):
-                # We return 200 so Vercel doesn't mark the cron as failed
-                msg = f"Skipping: Madrid hour is {now.hour}, target is {target_h}"
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "skipped", "message": msg}).encode("utf-8"))
-                return
         
         schedule_file = f"schedule_{box_suffix}.json"
         
