@@ -21,3 +21,4 @@ pip-delete-this-directory.txt
 *.log
 output.txt
 .vercel
+.env*.local
