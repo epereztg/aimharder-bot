@@ -127,7 +127,6 @@ class AimHarderClient:
             return {"raw": resp.text}
 
 
-
     def logout(self):
         try:
             self.session.get(

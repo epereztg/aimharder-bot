@@ -1,9 +1,12 @@
 {
     "id": "9907",
     "name": "laucalahealthcrossfit",
-    "Monday": null,
+    "Monday": {
+        "time": "19:30",
+        "class_name": "Crossfit"
+    },
     "Tuesday": {
-        "time": "17:30",
+        "time": "18:30",
         "class_name": "Crossfit"
     },
     "Wednesday": {
