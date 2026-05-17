@@ -3,5 +3,3 @@ __pycache__
 *.pyc
 .git
 .github
-mcp_server
-.vercel

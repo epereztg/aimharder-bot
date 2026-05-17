@@ -21,6 +21,9 @@
         "time": "17:30",
         "class_name": "Crossfit"
     },
-    "Saturday": null,
+    "Saturday": {
+        "time": "10:00",
+        "class_name": "Lift Class"
+    },
     "Sunday": null
 }

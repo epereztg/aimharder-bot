@@ -21,7 +21,6 @@ from bot_utils import (
     TIMEZONE, DEFAULT_BOX_NAME, DEFAULT_BOX_ID
 )
 from client import AimHarderClient
-from exceptions import BookingFailed, IncorrectCredentials, TooManyWrongAttempts
 
 
 def wait_until_target_time(target_hour: int, target_minute: int, skip_wait: bool = False) -> None:
@@ -198,18 +197,20 @@ def process_booking(client: AimHarderClient, class_info: dict, target_date: date
 
 
 def main():
+    days_adv_env = os.environ.get("DAYS_AHEAD") or os.environ.get("days-ahead") or 2
+
     parser = argparse.ArgumentParser(description="AimHarder Bot")
     parser.add_argument("--dry-run", action="store_true", help="Don't actually book, just show what would be booked")
-    parser.add_argument("--days-ahead", type=int, default=int(os.environ.get("DAYS_AHEAD", 2)), help="Book for N days ahead (default: 2)")
+    parser.add_argument("--days-ahead", dest="days_ahead", type=int, default=int(days_adv_env), help="Book for N days ahead (default: 2)")
     parser.add_argument("--schedule", type=str, default="schedule.json", help="Path to schedule JSON file")
     parser.add_argument("--skip-wait", action="store_true", help="Skip waiting for target time (for testing)")
     parser.add_argument("--box-name", type=str, default=None, help="Optional override for box name (subdomain)")
     parser.add_argument("--box-id", type=int, default=None, help="Optional override for box ID")
     # TARGET_HOUR_GMT1: booking open hour in GMT+1 / Madrid local time (Europe/Madrid).
     # Falls back to TARGET_HOUR for backwards compatibility.
-    _default_hour = int(os.environ.get("TARGET_HOUR_GMT1", os.environ.get("TARGET_HOUR", 18)))
-    parser.add_argument("--target-hour", type=int, default=_default_hour, help="Target hour in Madrid time (0-23) to trigger booking, default: 18")
-    parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 30)), help="Target minute to run (0-59), default: 30")
+    _default_hour = int(os.environ.get("TARGET_HOUR_GMT1", os.environ.get("TARGET_HOUR", 12)))
+    parser.add_argument("--target-hour", type=int, default=_default_hour, help="Target hour in Madrid time (0-23) to trigger booking, default: 12")
+    parser.add_argument("--target-minute", type=int, default=int(os.environ.get("TARGET_MINUTE", 0)), help="Target minute to run (0-59), default: 0")
     parser.add_argument("--update-status", action="store_true", help="Just update the booking status JSON and exit")
     args = parser.parse_args()
     
@@ -231,10 +232,13 @@ def main():
         print(f"❌ Invalid JSON in schedule file: {e}")
         sys.exit(1)
     
-    # Use metadata from JSON if available, otherwise use overrides/defaults
-    box_id = box.get("id") or args.box_id or int(os.environ.get("BOX_ID", 0)) or DEFAULT_BOX_ID
-    box_name = box.get("name") or args.box_name or os.environ.get("BOX_NAME") or DEFAULT_BOX_NAME
-    box_id = int(box_id)
+    # Read box name and ID, preferring arguments, then environment variables, then schedule JSON.
+    env_box_id = os.environ.get("BOX_ID") or os.environ.get("box-id")
+    env_box_name = os.environ.get("BOX_NAME") or os.environ.get("box-name")
+    
+    box_id_val = args.box_id or (int(env_box_id) if env_box_id else None) or box.get("id") or DEFAULT_BOX_ID
+    box_name = args.box_name or env_box_name or box.get("name") or DEFAULT_BOX_NAME
+    box_id = int(box_id_val) if box_id_val else 0
 
     try:
         client = AimHarderClient(email, password, box_name, box_id)

@@ -5,8 +5,6 @@ from typing import Optional, Union
 
 import requests
 
-from exceptions import IncorrectCredentials, TooManyWrongAttempts, BookingFailed
-
 LOGIN_URL = "https://login.aimharder.com/"
 
 class AimHarderClient:
@@ -46,9 +44,9 @@ class AimHarderClient:
 
         text = resp.text
         if "Too many wrong attempts" in text:
-            raise TooManyWrongAttempts("Login failed: too many wrong attempts")
+            raise RuntimeError("Login failed: too many wrong attempts")
         if "Incorrect credentials" in text or "Contraseña incorrecta" in text:
-            raise IncorrectCredentials("Login failed: incorrect credentials")
+            raise RuntimeError("Login failed: incorrect credentials")
 
         if self.box_name in resp.url:
             return
@@ -95,37 +93,12 @@ class AimHarderClient:
 
         resp = self.session.post(url, data=payload, headers=headers)
         if not resp.ok:
-            raise BookingFailed(f"book_class HTTP {resp.status_code}: {resp.text[:300]}")
+            raise RuntimeError(f"book_class HTTP {resp.status_code}: {resp.text[:300]}")
 
         try:
             return resp.json()
         except json.JSONDecodeError:
             return {"raw": resp.text}
-
-    def cancel_booking(self, class_id: Union[int, str], date: datetime) -> dict:
-        url = f"{self._base_url()}/api/book"
-        payload = {
-            "id": str(class_id),
-            "day": self._date_str(date),
-            "insist": 0,
-            "familyId": "",
-            "delete": 1,
-        }
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json",
-            "Referer": self._base_url(),
-        }
-
-        resp = self.session.post(url, data=payload, headers=headers)
-        if not resp.ok:
-            raise RuntimeError(f"cancel_booking HTTP {resp.status_code}: {resp.text[:300]}")
-
-        try:
-            return resp.json()
-        except json.JSONDecodeError:
-            return {"raw": resp.text}
-
 
     def logout(self):
         try:
