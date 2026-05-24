@@ -182,6 +182,7 @@ def process_booking(client: AimHarderClient, class_info: dict, target_date: date
 
     try:
         resp = client.book_class(class_id, target_date)
+        print(f"📡 API response: {resp}")
         book_state = resp.get("bookState")
         if book_state == 1:
             print_and_notify_booking(client.box_name, class_name, display_time, full_date_str, "CONFIRMED")
