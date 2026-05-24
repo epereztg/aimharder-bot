@@ -9,6 +9,8 @@ venv/
 .venv/
 pip-log.txt
 pip-delete-this-directory.txt
+debug.py
+test_login2.py
 
 # macOS
 .DS_Store
