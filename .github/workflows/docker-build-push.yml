@@ -31,15 +31,22 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t europe-west1-docker.pkg.dev/aimharder-bot-496010/docker-repo/aimharder-bot:${{ github.sha }} .
+          docker build -t europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }} .
 
       - name: Push Docker image
         run: |
-          docker push europe-west1-docker.pkg.dev/aimharder-bot-496010/docker-repo/aimharder-bot:${{ github.sha }}
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}
 
       - name: Tag as latest
         run: |
           docker tag \
-            europe-west1-docker.pkg.dev/aimharder-bot-496010/docker-repo/aimharder-bot:${{ github.sha }} \
-            europe-west1-docker.pkg.dev/aimharder-bot-496010/docker-repo/aimharder-bot:latest
-          docker push europe-west1-docker.pkg.dev/aimharder-bot-496010/docker-repo/aimharder-bot:latest
+            europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }} \
+            europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
+          docker push europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
+
+      - name: Update Cloud Run Job
+        run: |
+          gcloud run jobs update ${{ env.IMAGE }} \
+            --image europe-west1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }}
